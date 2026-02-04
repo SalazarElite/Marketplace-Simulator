@@ -209,6 +209,67 @@ input[type="number"] {
 	margin-bottom: 8px;
 }
 
+.tab-bar {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-bottom: 16px;
+}
+
+.tab-button {
+	background: #e9eef9;
+	color: #1a1f2e;
+	box-shadow: none;
+	padding: 8px 14px;
+	border-radius: 999px;
+	font-size: 14px;
+}
+
+.tab-button.active {
+	background: #2b64f6;
+	color: #fff;
+	box-shadow: 0 8px 18px rgba(43, 100, 246, 0.25);
+}
+
+.stepper {
+	display: flex;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.stepper-btn {
+	background: #f0f4ff;
+	color: #1a1f2e;
+	box-shadow: none;
+	padding: 6px 10px;
+	border-radius: 8px;
+	font-size: 12px;
+}
+
+.save-toast {
+	position: fixed;
+	right: 32px;
+	bottom: 24px;
+	background: rgba(36, 48, 77, 0.9);
+	color: #fff;
+	padding: 10px 14px;
+	border-radius: 10px;
+	font-size: 13px;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+	transform: translateY(6px);
+}
+
+.save-toast.visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.save-toast.error {
+	background: rgba(180, 58, 58, 0.9);
+}
+
 .option-grid {
 	display: grid;
 	gap: 16px;

@@ -2,6 +2,10 @@ const ipcRenderer = window?.require ? window.require('electron').ipcRenderer : {
 	send: () => {},
 	invoke: () => Promise.resolve()
 };
+const fs = window?.require ? window.require('fs') : null;
+const path = window?.require ? window.require('path') : null;
+const SAVE_DIR = fs && path ? path.join(__dirname, "Savegames") : null;
+const CONFIG_FILE = fs && path ? path.join(__dirname, "config.json") : null;
 
 const translations = {
 	pt: {
@@ -26,6 +30,13 @@ const translations = {
 		inventoryTitle: "Depósito",
 		suppliersTitle: "Fornecedores",
 		marketTitle: "Market share",
+		tabs: {
+			inventory: "Depósito",
+			suppliers: "Fornecedores",
+			market: "Market share",
+			skills: "Habilidades",
+			marketing: "Marketing"
+		},
 		marketingTitle: "Marketing",
 		marketingHint: "Ações de marketing aumentam visibilidade e impactam as vendas.",
 		marketingCostLabel: "Custo",
@@ -107,6 +118,13 @@ const translations = {
 		inventoryTitle: "Warehouse",
 		suppliersTitle: "Suppliers",
 		marketTitle: "Market share",
+		tabs: {
+			inventory: "Warehouse",
+			suppliers: "Suppliers",
+			market: "Market share",
+			skills: "Skills",
+			marketing: "Marketing"
+		},
 		marketingTitle: "Marketing",
 		marketingHint: "Marketing actions increase visibility and influence sales.",
 		marketingCostLabel: "Cost",
@@ -244,11 +262,17 @@ const gameState = {
 		recommendedSeller: false
 	},
 	activeEvents: [],
+	pendingNotices: [],
 	settings: {
 		resolution: resolutionOptions[1],
 		fullscreen: false,
 		language: "pt",
 		autosaveMinutes: 5
+	},
+	ui: {
+		currentScreen: "menu",
+		previousScreen: "menu",
+		activeTab: "inventory"
 	},
 	intervals: {
 		roundLoop: null,
@@ -281,12 +305,59 @@ const eventCatalog = [
 	{ id: "marketplaceOutage", name: "Marketplace fora do ar", duration: 5 },
 	{ id: "taxes", name: "Governo cobrando impostos", duration: 0 },
 	{ id: "packingFailure", name: "Equipamentos de empacotamento quebraram", duration: 0 },
-	{ id: "stolenCargo", name: "Carga roubada", duration: 1 },
 	{ id: "campaignBoost", name: "Campanha", duration: 5 }
 ];
 
+function ensureSaveDir() {
+	if (!fs || !SAVE_DIR) {
+		return;
+	}
+	try {
+		fs.mkdirSync(SAVE_DIR, { recursive: true });
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+function sanitizeFileName(name) {
+	return name.replace(/[\\/:*?"<>|]/g, "-").trim();
+}
+
+function writeJsonFile(filePath, payload) {
+	if (!fs || !filePath) {
+		return false;
+	}
+	try {
+		fs.writeFileSync(filePath, JSON.stringify(payload, null, 2));
+		return true;
+	} catch (error) {
+		console.error(error);
+		return false;
+	}
+}
+
+function readJsonFile(filePath) {
+	if (!fs || !filePath) {
+		return null;
+	}
+	try {
+		if (!fs.existsSync(filePath)) {
+			return null;
+		}
+		const raw = fs.readFileSync(filePath, "utf8");
+		return JSON.parse(raw);
+	} catch (error) {
+		console.error(error);
+		return null;
+	}
+}
+
 function saveSettings() {
 	try {
+		if (CONFIG_FILE) {
+			writeJsonFile(CONFIG_FILE, gameState.settings);
+			return;
+		}
 		localStorage.setItem("marketplace-settings", JSON.stringify(gameState.settings));
 	} catch (error) {
 		console.error(error);
@@ -295,6 +366,13 @@ function saveSettings() {
 
 function loadSettings() {
 	try {
+		if (CONFIG_FILE) {
+			const parsed = readJsonFile(CONFIG_FILE);
+			if (parsed) {
+				Object.assign(gameState.settings, parsed);
+			}
+			return;
+		}
 		const saved = localStorage.getItem("marketplace-settings");
 		if (saved) {
 			const parsed = JSON.parse(saved);
@@ -323,6 +401,7 @@ function t(key) {
 }
 
 function renderMainMenu() {
+	gameState.ui.currentScreen = "menu";
 	const mainScreen = document.getElementById("mainScreen");
 	mainScreen.innerHTML = `
 		<div id="mainMenu" class="card">
@@ -429,6 +508,7 @@ async function newGame() {
 		recommendedSeller: false
 	};
 	gameState.activeEvents = [];
+	gameState.ui.activeTab = "inventory";
 	generateCompetitors();
 	suppliers.forEach((supplier) => {
 		supplier.products.forEach((product) => {
@@ -451,15 +531,25 @@ async function loadGame() {
 	if (!saveName) {
 		return;
 	}
-	const save = localStorage.getItem(`marketplace-save-${saveName}`);
-	if (!save) {
+	let parsed = null;
+	if (fs && path && SAVE_DIR) {
+		const savePath = path.join(SAVE_DIR, saveName);
+		parsed = readJsonFile(savePath);
+	} else {
+		const save = localStorage.getItem(`marketplace-save-${saveName}`);
+		parsed = save ? JSON.parse(save) : null;
+	}
+	if (!parsed) {
 		alert(t("loadMissing"));
 		return;
 	}
-	const parsed = JSON.parse(save);
 	Object.assign(gameState, parsed, {
 		intervals: { roundLoop: null, autosave: null, feedLoop: null }
 	});
+	if (!gameState.ui) {
+		gameState.ui = { currentScreen: "menu", previousScreen: "menu", activeTab: "inventory" };
+	}
+	gameState.ui.activeTab = gameState.ui.activeTab || "inventory";
 	gameState.settings = preservedSettings;
 	gameState.paused = false;
 	if (!parsed.settings) {
@@ -538,8 +628,21 @@ function saveGame() {
 		};
 		const savedAt = new Date().toISOString();
 		const payload = { ...snapshot, savedAt };
+		const fileSafeName = sanitizeFileName(gameState.companyName);
+		if (fs && path && SAVE_DIR) {
+			ensureSaveDir();
+			const savePath = path.join(SAVE_DIR, `${fileSafeName}.json`);
+			const saved = writeJsonFile(savePath, payload);
+			if (saved) {
+				showSaveNotice(`${t("saveSuccess")} (${fileSafeName}.json)`);
+			} else {
+				showSaveNotice(t("saveFail"), true);
+			}
+			return;
+		}
 		localStorage.setItem(`marketplace-save-${gameState.companyName}`, JSON.stringify(payload));
 		updateSaveIndex(gameState.companyName, savedAt);
+		showSaveNotice(t("saveSuccess"));
 	} catch (error) {
 		console.error(error);
 	}
@@ -555,6 +658,24 @@ function updateSaveIndex(name, savedAt) {
 	} catch (error) {
 		console.error(error);
 	}
+}
+
+function showSaveNotice(message, isError = false) {
+	const toast = document.getElementById("saveToast");
+	if (!toast) {
+		return;
+	}
+	toast.textContent = message;
+	toast.classList.toggle("error", isError);
+	toast.classList.add("visible");
+	if (toast.dataset.timerId) {
+		clearTimeout(Number(toast.dataset.timerId));
+	}
+	const timerId = setTimeout(() => {
+		toast.classList.remove("visible");
+		toast.classList.remove("error");
+	}, 2400);
+	toast.dataset.timerId = timerId;
 }
 
 function resetLoops() {
@@ -604,6 +725,7 @@ function startAutosave() {
 
 function options() {
 	const mainScreen = document.getElementById("mainScreen");
+	gameState.ui.previousScreen = gameState.ui.currentScreen;
 	const optionsMarkup = resolutionOptions.map((option) => {
 		const selected = option.width === gameState.settings.resolution.width && option.height === gameState.settings.resolution.height;
 		return `<option value="${option.width}x${option.height}" ${selected ? "selected" : ""}>${option.label}</option>`;
@@ -613,7 +735,7 @@ function options() {
 		<div class="card">
 			<div class="card-header">
 				<h2>${t("optionsTitle")}</h2>
-				<button class="secondary" onclick="renderMainMenu()">${t("backToMenu")}</button>
+				<button class="secondary" onclick="goBack()">${t("backToMenu")}</button>
 			</div>
 			<div class="option-grid">
 				<label>
@@ -689,18 +811,28 @@ function quit() {
 
 function credits() {
 	const mainScreen = document.getElementById("mainScreen");
+	gameState.ui.previousScreen = gameState.ui.currentScreen;
 	mainScreen.innerHTML = `
 		<div class="card">
 			<div class="card-header">
 				<h2>${t("creditsTitle")}</h2>
-				<button class="secondary" onclick="renderMainMenu()">${t("backToMenu")}</button>
+				<button class="secondary" onclick="goBack()">${t("backToMenu")}</button>
 			</div>
 			<p class="status-note">${t("creditsText")}</p>
 		</div>
 	`;
 }
 
+function goBack() {
+	if (gameState.ui.previousScreen === "game") {
+		renderGameScreen();
+		return;
+	}
+	renderMainMenu();
+}
+
 function renderGameScreen() {
+	gameState.ui.currentScreen = "game";
 	const mainScreen = document.getElementById("mainScreen");
 	const supplierCards = suppliers.map((supplier) => {
 		const productsMarkup = supplier.products.map((product) => `
@@ -712,6 +844,9 @@ function renderGameScreen() {
 						${t("stockLabel")}
 						<input type="number" min="1" max="500" value="20" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseTotal('${product.id}')">
 					</label>
+					<div class="stepper">
+						${renderStepperButtons(`adjustPurchaseQty('${product.id}',`)}
+					</div>
 					<div class="purchase-total" data-product-total="${product.id}">
 						<span>${t("purchaseTotalLabel")}</span>
 						<strong>R$ ${Math.round(product.cost * 20)}</strong>
@@ -730,6 +865,19 @@ function renderGameScreen() {
 			</div>
 		`;
 	}).join("");
+
+	const tabs = [
+		{ id: "inventory", label: t("tabs.inventory") },
+		{ id: "suppliers", label: t("tabs.suppliers") },
+		{ id: "market", label: t("tabs.market") },
+		{ id: "skills", label: t("tabs.skills") },
+		{ id: "marketing", label: t("tabs.marketing") }
+	];
+	const tabsMarkup = tabs.map((tab) => `
+		<button class="tab-button ${gameState.ui.activeTab === tab.id ? "active" : ""}" data-tab="${tab.id}" onclick="setActiveTab('${tab.id}')">
+			${tab.label}
+		</button>
+	`).join("");
 
 	mainScreen.innerHTML = `
 		<div class="game-layout">
@@ -752,14 +900,6 @@ function renderGameScreen() {
 					<button class="secondary" id="speedFast" onclick="setGameSpeed(2)">${t("speedFast")}</button>
 				</div>
 				<div class="section-divider"></div>
-				<h3 class="panel-title">${t("marketingTitle")}</h3>
-				<p class="status-note">${t("marketingHint")}</p>
-				<div class="marketing-actions">
-					${renderMarketingButton("social")}
-					${renderMarketingButton("influencer")}
-					${renderMarketingButton("frete")}
-				</div>
-				<div class="section-divider"></div>
 				<h3 class="panel-title">${t("packagingTitle")}</h3>
 				<div class="packaging-options">
 					${renderPackagingOption("simple")}
@@ -771,28 +911,115 @@ function renderGameScreen() {
 				<div id="feed" class="feed"></div>
 			</section>
 			<section class="card">
-				<h2 class="panel-title">${t("inventoryTitle")}</h2>
-				<div id="inventoryList" class="inventory-list"></div>
-				<div class="section-divider"></div>
-				<h2 class="panel-title">${t("suppliersTitle")}</h2>
-				<div class="supplier-list">${supplierCards}</div>
-				<div class="section-divider"></div>
-				<h2 class="panel-title">${t("marketTitle")}</h2>
-				<div id="marketShareChart" class="marketshare"></div>
-				<div class="section-divider"></div>
-				<h2 class="panel-title">${t("skillsTitle")}</h2>
-				<p class="status-note">${t("skillsHint")}</p>
-				<div id="skillsTree" class="skills-tree"></div>
+				<div class="tab-bar">
+					${tabsMarkup}
+				</div>
+				<div id="tabContent"></div>
 			</section>
 		</div>
+		<div id="saveToast" class="save-toast" aria-live="polite"></div>
 	`;
 
 	updateStats();
-	renderInventory();
 	renderFeed();
-	renderSuppliers();
-	renderSkills();
+	renderTabContent({ supplierCards });
 	updateSpeedControls();
+}
+
+function renderStepperButtons(callbackStart) {
+	const steps = [-1000, -100, -10, -1, 1, 10, 100, 1000];
+	return steps.map((step) => `
+		<button type="button" class="stepper-btn" onclick="${callbackStart} ${step})">${step > 0 ? `+${step}` : step}</button>
+	`).join("");
+}
+
+function setActiveTab(tabId) {
+	gameState.ui.activeTab = tabId;
+	document.querySelectorAll(".tab-button").forEach((button) => {
+		button.classList.toggle("active", button.dataset.tab === tabId);
+	});
+	renderTabContent();
+}
+
+function renderTabContent(payload = {}) {
+	const container = document.getElementById("tabContent");
+	if (!container) {
+		return;
+	}
+	const supplierCards = payload.supplierCards ?? suppliers.map((supplier) => {
+		const productsMarkup = supplier.products.map((product) => `
+			<div class="product-row">
+				<strong>${product.name}</strong>
+				<small data-product-stats="${product.id}">${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}</small>
+				<div class="inventory-actions">
+					<label>
+						${t("stockLabel")}
+						<input type="number" min="1" max="500" value="20" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseTotal('${product.id}')">
+					</label>
+					<div class="stepper">
+						${renderStepperButtons(`adjustPurchaseQty('${product.id}',`)}
+					</div>
+					<div class="purchase-total" data-product-total="${product.id}">
+						<span>${t("purchaseTotalLabel")}</span>
+						<strong>R$ ${Math.round(product.cost * 20)}</strong>
+					</div>
+					<button onclick="buyProduct('${product.id}', ${supplier.id})">${t("buyAction")}</button>
+				</div>
+			</div>
+		`).join("");
+
+		return `
+			<div class="supplier-card">
+				<strong>${supplier.name}</strong>
+				<div class="product-list">
+					${productsMarkup}
+				</div>
+			</div>
+		`;
+	}).join("");
+
+	switch (gameState.ui.activeTab) {
+	case "suppliers":
+		container.innerHTML = `
+			<h2 class="panel-title">${t("suppliersTitle")}</h2>
+			<div class="supplier-list">${supplierCards}</div>
+		`;
+		renderSuppliers();
+		break;
+	case "market":
+		container.innerHTML = `
+			<h2 class="panel-title">${t("marketTitle")}</h2>
+			<div id="marketShareChart" class="marketshare"></div>
+		`;
+		renderMarketShare();
+		break;
+	case "skills":
+		container.innerHTML = `
+			<h2 class="panel-title">${t("skillsTitle")}</h2>
+			<p class="status-note">${t("skillsHint")}</p>
+			<div id="skillsTree" class="skills-tree"></div>
+		`;
+		renderSkills();
+		break;
+	case "marketing":
+		container.innerHTML = `
+			<h2 class="panel-title">${t("marketingTitle")}</h2>
+			<p class="status-note">${t("marketingHint")}</p>
+			<div class="marketing-actions">
+				${renderMarketingButton("social")}
+				${renderMarketingButton("influencer")}
+				${renderMarketingButton("frete")}
+			</div>
+		`;
+		break;
+	default:
+		container.innerHTML = `
+			<h2 class="panel-title">${t("inventoryTitle")}</h2>
+			<div id="inventoryList" class="inventory-list"></div>
+		`;
+		renderInventory();
+		break;
+	}
 }
 
 function findProduct(productId) {
@@ -822,10 +1049,8 @@ function buyProduct(productId, supplierId) {
 		return;
 	}
 	gameState.cash -= totalCost;
-	const stolenEvent = gameState.activeEvents.find((event) => event.id === "stolenCargo");
-	if (stolenEvent) {
-		stolenEvent.remaining -= 1;
-		gameState.activeEvents = gameState.activeEvents.filter((event) => event.remaining > 0);
+	const stolenRoll = Math.random() < 0.01;
+	if (stolenRoll) {
 		addFeedEntry("🚨 Carga roubada! Sua compra foi perdida.");
 		updateStats();
 		return;
@@ -922,9 +1147,7 @@ function simulateRound() {
 		soldItems.push({ ...item, sold, refunds });
 	});
 
-	const profit = totalRevenue - totalRefundValue - totalCostOfGoods - totalPackagingCost;
 	gameState.cash += totalRevenue - totalRefundValue - totalPackagingCost;
-	gameState.xp += Math.max(0, Math.round(profit));
 	gameState.lastSales = totalSales;
 	gameState.lastRefunds = totalRefunds;
 	gameState.lastSoldItems = soldItems;
@@ -936,9 +1159,10 @@ function simulateRound() {
 
 	updateMarketShare();
 	updateStats();
-	renderInventory();
+	updateInventoryStats();
 	renderSuppliers();
 	renderSkills();
+	flushPendingNotices();
 }
 
 function calculateDemand(item) {
@@ -969,10 +1193,12 @@ function updateReputation(soldItems, totalSales) {
 	if (gameState.reviews === 0) {
 		gameState.rating = newRating;
 		gameState.reviews = newReviews;
+		gameState.xp += Math.round(newReviews * newRating);
 		return;
 	}
 	gameState.rating = ((gameState.rating * gameState.reviews) + (newRating * newReviews)) / (gameState.reviews + newReviews);
 	gameState.reviews += newReviews;
+	gameState.xp += Math.round(newReviews * newRating);
 }
 
 function calculateStoreScore(rating, reviews, price, visibility) {
@@ -1086,21 +1312,30 @@ function renderInventory() {
 		<div class="inventory-card">
 			<strong>${item.name}</strong>
 			<small>${item.supplier}</small>
-			<small>${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: R$ ${item.cost.toFixed(0)}</small>
+			<small data-inventory-stats="${item.productId}">${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: R$ ${item.cost.toFixed(0)}</small>
 			<div class="inventory-actions">
-				<span>${t("stockLabel")}: <strong>${item.stock}</strong></span>
+				<span>${t("stockLabel")}: <strong data-inventory-stock="${item.productId}">${item.stock}</strong></span>
 				<label>
 					${t("sellPriceLabel")}
-					<input type="number" min="1" value="${item.sellPrice}" onchange="updateSellPrice('${item.productId}', this.value)">
+					<input type="number" min="1" value="${item.sellPrice}" data-inventory="${item.productId}" data-field="sellPrice" oninput="updateSellPrice('${item.productId}', this.value)">
 				</label>
+				<div class="stepper">
+					${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'sellPrice',`)}
+				</div>
 				<label>
 					${t("restockThresholdLabel")}
-					<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" onchange="updateAutoRestock('${item.productId}', 'threshold', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
+					<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" data-inventory="${item.productId}" data-field="threshold" oninput="updateAutoRestock('${item.productId}', 'threshold', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
 				</label>
+				<div class="stepper">
+					${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'threshold',`)}
+				</div>
 				<label>
 					${t("restockQuantityLabel")}
-					<input type="number" min="0" value="${item.autoRestockQty ?? 0}" onchange="updateAutoRestock('${item.productId}', 'quantity', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
+					<input type="number" min="0" value="${item.autoRestockQty ?? 0}" data-inventory="${item.productId}" data-field="quantity" oninput="updateAutoRestock('${item.productId}', 'quantity', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
 				</label>
+				<div class="stepper">
+					${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'quantity',`)}
+				</div>
 				${autoRestockUnlocked ? "" : `<small class="status-note">${t("restockLocked")}</small>`}
 			</div>
 		</div>
@@ -1173,6 +1408,49 @@ function updatePurchaseTotal(productId) {
 	totalSlot.textContent = `R$ ${Math.round(details.product.cost * quantity)}`;
 }
 
+function adjustPurchaseQty(productId, delta) {
+	const input = document.querySelector(`input[data-product="${productId}"]`);
+	if (!input) {
+		return;
+	}
+	const min = Number(input.min) || 0;
+	const max = Number(input.max) || Infinity;
+	const next = clamp((Number(input.value) || 0) + delta, min, max);
+	input.value = next;
+	updatePurchaseTotal(productId);
+}
+
+function adjustInventoryInput(productId, field, delta) {
+	const input = document.querySelector(`input[data-inventory="${productId}"][data-field="${field}"]`);
+	if (!input || input.disabled) {
+		return;
+	}
+	const min = Number(input.min) || 0;
+	const max = input.max ? Number(input.max) : Infinity;
+	const next = clamp((Number(input.value) || 0) + delta, min, max);
+	input.value = next;
+	if (field === "sellPrice") {
+		updateSellPrice(productId, next);
+	} else if (field === "threshold") {
+		updateAutoRestock(productId, "threshold", next);
+	} else if (field === "quantity") {
+		updateAutoRestock(productId, "quantity", next);
+	}
+}
+
+function updateInventoryStats() {
+	gameState.inventory.forEach((item) => {
+		const stock = document.querySelector(`[data-inventory-stock="${item.productId}"]`);
+		if (stock) {
+			stock.textContent = item.stock;
+		}
+		const stats = document.querySelector(`[data-inventory-stats="${item.productId}"]`);
+		if (stats) {
+			stats.textContent = `${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: R$ ${item.cost.toFixed(0)}`;
+		}
+	});
+}
+
 function updateAutoRestock(productId, field, value) {
 	if (!gameState.skills.autoRestock) {
 		return;
@@ -1239,6 +1517,21 @@ function addFeedEntry(message) {
 	renderFeed();
 }
 
+function queueNotice(message) {
+	if (!message) {
+		return;
+	}
+	gameState.pendingNotices.push(message);
+}
+
+function flushPendingNotices() {
+	if (gameState.pendingNotices.length === 0) {
+		return;
+	}
+	gameState.pendingNotices.forEach((message) => addFeedEntry(message));
+	gameState.pendingNotices = [];
+}
+
 function renderFeed() {
 	const feed = document.getElementById("feed");
 	if (!feed) {
@@ -1260,7 +1553,59 @@ function generatePraise(item) {
 	const notes = [
 		`💬 "Preço justo para ${item.name}, vou comprar de novo!"`,
 		`💬 "${item.name} chegou rápido e com ótima qualidade."`,
-		`💬 "Gostei da embalagem do ${item.name}!"`
+		`💬 "Gostei da embalagem do ${item.name}!"`,
+		`💬 "O ${item.name} superou minhas expectativas."`,
+		`💬 "Entrega ágil e ${item.name} impecável."`,
+		`💬 "Voltarei a comprar ${item.name} com certeza."`,
+		`💬 "Excelente custo-benefício no ${item.name}."`,
+		`💬 "Atendimento ótimo e ${item.name} perfeito."`,
+		`💬 "O ${item.name} chegou antes do prazo."`,
+		`💬 "Produto ${item.name} de ótima qualidade."`,
+		`💬 "Me surpreendi com o cuidado na embalagem do ${item.name}."`,
+		`💬 "O ${item.name} vale cada centavo."`,
+		`💬 "Chegou direitinho, adorei o ${item.name}."`,
+		`💬 "O ${item.name} veio bem protegido."`,
+		`💬 "Recomendo o ${item.name} para amigos."`,
+		`💬 "Satisfeito com o ${item.name}!"`,
+		`💬 "Experiência top com o ${item.name}."`,
+		`💬 "Qualidade acima da média no ${item.name}."`,
+		`💬 "Compra tranquila e ${item.name} excelente."`,
+		`💬 "O ${item.name} chegou perfeito."`,
+		`💬 "Ótima loja, ${item.name} impecável."`,
+		`💬 "Nota 10 para o ${item.name}."`,
+		`💬 "Recebi o ${item.name} muito rápido."`,
+		`💬 "O ${item.name} veio com capricho."`,
+		`💬 "Preço competitivo e ${item.name} top."`,
+		`💬 "O ${item.name} chegou sem defeitos."`,
+		`💬 "Estou encantado com o ${item.name}."`,
+		`💬 "Compra perfeita do ${item.name}."`,
+		`💬 "O ${item.name} veio como anunciado."`,
+		`💬 "Muito satisfeito com o ${item.name}."`,
+		`💬 "O ${item.name} tem ótimo acabamento."`,
+		`💬 "Amei o ${item.name}, compra certeira."`,
+		`💬 "O ${item.name} chegou novinho."`,
+		`💬 "Que qualidade no ${item.name}!"`,
+		`💬 "O ${item.name} veio exatamente como queria."`,
+		`💬 "Experiência incrível com o ${item.name}."`,
+		`💬 "Compraria o ${item.name} novamente."`,
+		`💬 "O ${item.name} é melhor do que pensei."`,
+		`💬 "Adorei o ${item.name} e o envio rápido."`,
+		`💬 "O ${item.name} chegou bem embalado."`,
+		`💬 "Qualidade premium no ${item.name}."`,
+		`💬 "O ${item.name} veio com tudo certo."`,
+		`💬 "Mais do que satisfeito com o ${item.name}."`,
+		`💬 "Produto ${item.name} com ótimo desempenho."`,
+		`💬 "O ${item.name} é simplesmente excelente."`,
+		`💬 "Atendimento rápido e ${item.name} perfeito."`,
+		`💬 "O ${item.name} chegou em ótimo estado."`,
+		`💬 "Valeu a pena comprar o ${item.name}."`,
+		`💬 "O ${item.name} veio conforme as fotos."`,
+		`💬 "Qualidade impecável no ${item.name}."`,
+		`💬 "O ${item.name} chegou com tudo certo."`,
+		`💬 "Recomendo muito o ${item.name}."`,
+		`💬 "Entrega veloz, ${item.name} perfeito."`,
+		`💬 "O ${item.name} tem acabamento excelente."`,
+		`💬 "Top demais o ${item.name}."`
 	];
 	return notes[Math.floor(Math.random() * notes.length)];
 }
@@ -1446,13 +1791,10 @@ function applyRecommendedSellerMinimum() {
 		extraRevenue += revenue;
 		const refundValue = refunds * item.sellPrice;
 		const packagingCost = extra * packagingOptions[gameState.packaging].cost;
-		const costOfGoods = extra * item.cost;
 		gameState.cash += revenue - refundValue - packagingCost;
 		gameState.lastSales += extra;
 		gameState.lastRefunds += refunds;
 		gameState.lastSoldItems.push({ ...item, sold: extra, refunds });
-		const profit = revenue - refundValue - packagingCost - costOfGoods;
-		gameState.xp += Math.max(0, Math.round(profit));
 		remaining -= extra;
 	});
 	return extraRevenue;
@@ -1466,12 +1808,12 @@ function applyEvents() {
 			const tax = Math.round(sum * 0.05);
 			gameState.cash -= tax;
 			event.processed = true;
-			addFeedEntry(`🏛️ Governo cobrou impostos de R$ ${tax}.`);
+			queueNotice(`🏛️ Governo cobrou impostos de R$ ${tax}.`);
 		}
 		if (event.id === "packingFailure" && !event.processed) {
 			gameState.cash -= 10000;
 			event.processed = true;
-			addFeedEntry("🛠️ Equipamentos de empacotamento quebraram. Reparos de R$ 10.000.");
+			queueNotice("🛠️ Equipamentos de empacotamento quebraram. Reparos de R$ 10.000.");
 		}
 	});
 }
@@ -1489,19 +1831,14 @@ function triggerRandomEvent() {
 	gameState.activeEvents.push(entry);
 	switch (event.id) {
 	case "marketplaceOutage":
-		addFeedEntry("🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por 5 atualizações.");
+		queueNotice("🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por 5 atualizações.");
 		break;
 	case "taxes":
-		addFeedEntry("🏛️ Governo anunciou cobrança de impostos.");
 		break;
 	case "packingFailure":
-		addFeedEntry("🛠️ Equipamentos de empacotamento quebraram.");
-		break;
-	case "stolenCargo":
-		addFeedEntry("🚨 Alerta de carga roubada. A próxima compra será perdida.");
 		break;
 	case "campaignBoost":
-		addFeedEntry("📈 Campanha geral: vendas triplicadas por 5 atualizações.");
+		queueNotice("📈 Campanha geral: vendas triplicadas por 5 atualizações.");
 		break;
 	default:
 		break;
@@ -1510,17 +1847,11 @@ function triggerRandomEvent() {
 
 function updateEventDurations() {
 	gameState.activeEvents.forEach((event) => {
-		if (event.id === "stolenCargo") {
-			return;
-		}
 		if (event.remaining > 0) {
 			event.remaining -= 1;
 		}
 	});
 	gameState.activeEvents = gameState.activeEvents.filter((event) => {
-		if (event.id === "stolenCargo") {
-			return true;
-		}
 		if (event.remaining > 0) {
 			return true;
 		}
@@ -1548,7 +1879,7 @@ function openSaveSelection() {
 		const saves = getSaveIndex();
 		const listItems = saves.length
 			? saves.map((entry) => `
-				<button class="save-entry" data-save="${entry.name}">
+				<button class="save-entry" data-save="${entry.file ?? entry.name}">
 					<strong>${entry.name}</strong>
 					<small>${new Date(entry.savedAt).toLocaleString()}</small>
 				</button>
@@ -1589,6 +1920,18 @@ function openSaveSelection() {
 
 function getSaveIndex() {
 	try {
+		if (fs && path && SAVE_DIR) {
+			ensureSaveDir();
+			const files = fs.readdirSync(SAVE_DIR).filter((file) => file.endsWith(".json"));
+			const entries = files.map((file) => {
+				const parsed = readJsonFile(path.join(SAVE_DIR, file));
+				if (!parsed?.companyName || !parsed?.savedAt) {
+					return null;
+				}
+				return { name: parsed.companyName, savedAt: parsed.savedAt, file };
+			}).filter(Boolean);
+			return entries.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+		}
 		const saved = JSON.parse(localStorage.getItem("marketplace-save-index")) || [];
 		if (saved.length === 0) {
 			const generated = [];
