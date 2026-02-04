@@ -4,20 +4,31 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Marketplace Simulator</title>
-	<script src="functions\game.js"></script>
-	<script src="functions\interface.js"></script>
+	<link rel="stylesheet" href="styles.css">
+	<script src="functions/game.js"></script>
+	<script src="functions/interface.js"></script>
 </head>
 <body>
-<div id="mainScreen">
-	<div id="mainMenu">
-		<ul>
-		<li><button onclick="newGame()">Novo Jogo</button></li>
-		<li><button onclick="loadGame()">Carregar Jogo</button></li>
-		<li><button onclick="options()">Opções</button></li>
-		<li><button onclick="quit()">Sair</button></li>
-		<li><button onclick="credits()">Créditos</button></li>
-		</ul>
+	<header class="app-header">
+		<div>
+			<h1>Marketplace Simulator</h1>
+			<p>Equilibre qualidade, preço e reputação para dominar o mercado.</p>
+		</div>
+		<div class="header-actions">
+			<button class="secondary" onclick="options()">Opções</button>
+			<button class="secondary" onclick="credits()">Créditos</button>
+			<button class="secondary" onclick="quit()">Sair</button>
+		</div>
+	</header>
+	<div id="mainScreen">
+		<div id="mainMenu" class="card">
+			<h2>Menu principal</h2>
+			<p>Comece uma nova simulação e veja como suas escolhas impactam o market share.</p>
+			<div class="menu-actions">
+				<button onclick="newGame()">Novo Jogo</button>
+				<button onclick="loadGame()">Carregar Jogo</button>
+			</div>
+		</div>
 	</div>
-</div>
 </body>
 </html>
