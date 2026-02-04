@@ -187,11 +187,53 @@ function renderMainMenu() {
 }
 
 function newGame() {
-	openCompanyModal("new");
+	const name = prompt(t("companyPrompt"), gameState.companyName || "");
+	if (!name) {
+		return;
+	}
+	gameState.companyName = name.trim();
+	gameState.round = 1;
+	gameState.cash = 12000;
+	gameState.rating = 0;
+	gameState.reviews = 0;
+	gameState.lastSales = 0;
+	gameState.lastRefunds = 0;
+	gameState.marketShare = [];
+	gameState.visibility = 38;
+	gameState.inventory = [];
+	gameState.feed = [];
+	suppliers.forEach((supplier) => {
+		supplier.products.forEach((product) => {
+			product.quality = product.baseQuality;
+			product.cost = product.baseCost;
+		});
+	});
+	resetLoops();
+	renderGameScreen();
+	updateMarketShare();
+	startSimulationLoop();
+	startAutosave();
 }
 
 function loadGame() {
-	openCompanyModal("load");
+	const name = prompt(t("companyPrompt"), gameState.companyName || "");
+	if (!name) {
+		return;
+	}
+	const save = localStorage.getItem(`marketplace-save-${name.trim()}`);
+	if (!save) {
+		alert(t("loadMissing"));
+		return;
+	}
+	const parsed = JSON.parse(save);
+	Object.assign(gameState, parsed, {
+		intervals: { roundLoop: null, autosave: null }
+	});
+	resetLoops();
+	renderGameScreen();
+	updateMarketShare();
+	startSimulationLoop();
+	startAutosave();
 }
 
 function saveGame() {
@@ -245,102 +287,6 @@ function startAutosave() {
 	gameState.intervals.autosave = setInterval(() => {
 		saveGame();
 	}, minutes * 60 * 1000);
-}
-
-function openCompanyModal(mode) {
-	const modalRoot = document.getElementById("modalRoot") || document.createElement("div");
-	modalRoot.id = "modalRoot";
-	document.body.appendChild(modalRoot);
-	const label = mode === "new" ? t("newGame") : t("loadGame");
-		modalRoot.innerHTML = `
-		<div class="modal-backdrop">
-			<div class="modal-card">
-				<h3>${label}</h3>
-				<label>
-					${t("companyPrompt")}
-					<input id="companyNameInput" type="text" value="${gameState.companyName}" onkeydown="handleCompanyInputKey(event, '${mode}')">
-				</label>
-				<div class="modal-actions">
-					<button class="secondary" onclick="closeCompanyModal()">${t("backToMenu")}</button>
-					<button onclick="confirmCompanyModal('${mode}')">${label}</button>
-				</div>
-			</div>
-		</div>
-	`;
-	const input = document.getElementById("companyNameInput");
-	input?.focus();
-}
-
-function handleCompanyInputKey(event, mode) {
-	if (event.key === "Enter") {
-		confirmCompanyModal(mode);
-	}
-	if (event.key === "Escape") {
-		closeCompanyModal();
-	}
-}
-
-function closeCompanyModal() {
-	const modalRoot = document.getElementById("modalRoot");
-	if (modalRoot) {
-		modalRoot.innerHTML = "";
-	}
-}
-
-function confirmCompanyModal(mode) {
-	const input = document.getElementById("companyNameInput");
-	const name = input?.value?.trim();
-	if (!name) {
-		return;
-	}
-	gameState.companyName = name;
-	closeCompanyModal();
-	if (mode === "load") {
-		loadGameByName(name);
-	} else {
-		startNewGame();
-	}
-}
-
-function startNewGame() {
-	gameState.round = 1;
-	gameState.cash = 12000;
-	gameState.rating = 0;
-	gameState.reviews = 0;
-	gameState.lastSales = 0;
-	gameState.lastRefunds = 0;
-	gameState.marketShare = [];
-	gameState.visibility = 38;
-	gameState.inventory = [];
-	gameState.feed = [];
-	suppliers.forEach((supplier) => {
-		supplier.products.forEach((product) => {
-			product.quality = product.baseQuality;
-			product.cost = product.baseCost;
-		});
-	});
-	resetLoops();
-	renderGameScreen();
-	updateMarketShare();
-	startSimulationLoop();
-	startAutosave();
-}
-
-function loadGameByName(name) {
-	const save = localStorage.getItem(`marketplace-save-${name.trim()}`);
-	if (!save) {
-		alert(t("loadMissing"));
-		return;
-	}
-	const parsed = JSON.parse(save);
-	Object.assign(gameState, parsed, {
-		intervals: { roundLoop: null, autosave: null }
-	});
-	resetLoops();
-	renderGameScreen();
-	updateMarketShare();
-	startSimulationLoop();
-	startAutosave();
 }
 
 function options() {
