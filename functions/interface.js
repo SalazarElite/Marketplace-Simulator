@@ -13,6 +13,8 @@ const translations = {
 		mainMenuTitle: "Menu principal",
 		mainMenuSubtitle: "Comece uma nova simulação e veja como suas escolhas impactam o market share.",
 		companyPrompt: "Nome da empresa:",
+		confirmAction: "Confirmar",
+		cancelAction: "Cancelar",
 		companyNameLabel: "Empresa",
 		cashLabel: "Caixa",
 		ratingLabel: "Avaliação",
@@ -55,6 +57,8 @@ const translations = {
 		mainMenuTitle: "Main menu",
 		mainMenuSubtitle: "Start a new simulation and see how your choices affect market share.",
 		companyPrompt: "Company name:",
+		confirmAction: "Confirm",
+		cancelAction: "Cancel",
 		companyNameLabel: "Company",
 		cashLabel: "Cash",
 		ratingLabel: "Rating",
@@ -186,9 +190,71 @@ function renderMainMenu() {
 	`;
 }
 
-function newGame() {
-	const name = prompt(t("companyPrompt"), gameState.companyName || "");
-	if (!name) {
+function openCompanyPrompt() {
+	return new Promise((resolve) => {
+		const existingModal = document.getElementById("modalRoot");
+		if (existingModal) {
+			existingModal.remove();
+		}
+
+		const modalRoot = document.createElement("div");
+		modalRoot.id = "modalRoot";
+		modalRoot.innerHTML = `
+			<div class="modal-backdrop">
+				<div class="modal-card">
+					<h3>${t("companyPrompt")}</h3>
+					<label>
+						${t("companyPrompt")}
+						<input type="text" />
+					</label>
+					<div class="modal-actions">
+						<button class="secondary" data-action="cancel">${t("cancelAction")}</button>
+						<button data-action="confirm">${t("confirmAction")}</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		document.body.appendChild(modalRoot);
+
+		const input = modalRoot.querySelector("input");
+		const confirmButton = modalRoot.querySelector('[data-action="confirm"]');
+		const cancelButton = modalRoot.querySelector('[data-action="cancel"]');
+		const backdrop = modalRoot.querySelector(".modal-backdrop");
+
+		input.value = gameState.companyName || "";
+
+		const closeModal = (value) => {
+			modalRoot.remove();
+			resolve(value);
+		};
+
+		confirmButton.addEventListener("click", () => closeModal(input.value));
+		cancelButton.addEventListener("click", () => closeModal(null));
+		backdrop.addEventListener("click", (event) => {
+			if (event.target === backdrop) {
+				closeModal(null);
+			}
+		});
+
+		input.addEventListener("keydown", (event) => {
+			if (event.key === "Enter") {
+				event.preventDefault();
+				closeModal(input.value);
+			}
+			if (event.key === "Escape") {
+				event.preventDefault();
+				closeModal(null);
+			}
+		});
+
+		setTimeout(() => input.focus(), 0);
+	});
+}
+
+async function newGame() {
+	const name = await openCompanyPrompt();
+	if (!name || !name.trim()) {
 		return;
 	}
 	gameState.companyName = name.trim();
@@ -215,12 +281,13 @@ function newGame() {
 	startAutosave();
 }
 
-function loadGame() {
-	const name = prompt(t("companyPrompt"), gameState.companyName || "");
-	if (!name) {
+async function loadGame() {
+	const name = await openCompanyPrompt();
+	if (!name || !name.trim()) {
 		return;
 	}
-	const save = localStorage.getItem(`marketplace-save-${name.trim()}`);
+	const trimmedName = name.trim();
+	const save = localStorage.getItem(`marketplace-save-${trimmedName}`);
 	if (!save) {
 		alert(t("loadMissing"));
 		return;
