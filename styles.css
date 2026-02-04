@@ -191,6 +191,17 @@ input[type="number"] {
 	color: #586174;
 }
 
+.purchase-total {
+	display: grid;
+	gap: 2px;
+	font-size: 12px;
+	color: #586174;
+}
+
+.purchase-total strong {
+	color: #1a1f2e;
+}
+
 .marketing-actions {
 	display: flex;
 	gap: 10px;
