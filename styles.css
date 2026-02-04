@@ -207,6 +207,36 @@ input[type="number"] {
 	gap: 6px;
 	font-size: 14px;
 	color: #586174;
+}
+
+.option-grid small {
+	color: #8a93a6;
+	font-size: 12px;
+}
+
+.feed {
+	display: grid;
+	gap: 10px;
+}
+
+.feed-item {
+	background: #f7f9fe;
+	border-radius: 12px;
+	padding: 10px 12px;
+	display: grid;
+	gap: 6px;
+}
+
+.feed-item small {
+	color: #8a93a6;
+	font-size: 12px;
+}
+
+.status-note {
+	color: #6e788c;
+	font-size: 14px;
+}
+
 .supplier-card strong {
 	font-size: 16px;
 }
@@ -261,24 +291,6 @@ input[type="number"] {
 
 .market-row small {
 	color: #586174;
-}
-
-.twitter-feed {
-	display: grid;
-	gap: 10px;
-}
-
-.tweet {
-	background: #f2f5fb;
-	border-radius: 10px;
-	padding: 10px 12px;
-	font-size: 14px;
-	color: #3a4357;
-}
-
-.status-note {
-	color: #586174;
-	font-size: 14px;
 }
 
 .section-divider {
