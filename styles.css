@@ -1,0 +1,187 @@
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+body {
+	background: #f5f7fb;
+	color: #1a1f2e;
+	min-height: 100vh;
+	padding: 32px;
+}
+
+.app-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 24px;
+	margin-bottom: 32px;
+}
+
+.app-header h1 {
+	font-size: 28px;
+	margin-bottom: 6px;
+}
+
+.app-header p {
+	color: #586174;
+}
+
+.header-actions {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+button {
+	background: #2b64f6;
+	border: none;
+	color: #fff;
+	padding: 10px 18px;
+	border-radius: 10px;
+	cursor: pointer;
+	font-weight: 600;
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	box-shadow: 0 6px 16px rgba(43, 100, 246, 0.2);
+}
+
+button:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 8px 18px rgba(43, 100, 246, 0.3);
+}
+
+button.secondary {
+	background: #e4e9f4;
+	color: #1a1f2e;
+	box-shadow: none;
+}
+
+.card {
+	background: #fff;
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: 0 14px 32px rgba(32, 48, 88, 0.08);
+}
+
+#mainScreen {
+	display: grid;
+	gap: 24px;
+}
+
+.menu-actions {
+	display: flex;
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.game-layout {
+	display: grid;
+	grid-template-columns: 320px 1fr;
+	gap: 24px;
+}
+
+.panel-title {
+	font-size: 18px;
+	margin-bottom: 12px;
+}
+
+.stat-grid {
+	display: grid;
+	gap: 12px;
+}
+
+.stat {
+	background: #f2f5fb;
+	border-radius: 12px;
+	padding: 12px 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.stat span {
+	color: #586174;
+	font-size: 14px;
+}
+
+.supplier-list {
+	display: grid;
+	gap: 12px;
+}
+
+.supplier-card {
+	border: 1px solid #e3e9f5;
+	border-radius: 14px;
+	padding: 14px;
+	display: grid;
+	gap: 8px;
+}
+
+.supplier-card strong {
+	font-size: 16px;
+}
+
+.supplier-card button {
+	justify-self: start;
+}
+
+.controls {
+	display: grid;
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.controls label {
+	font-size: 14px;
+	color: #586174;
+}
+
+.controls input[type="range"] {
+	width: 100%;
+}
+
+.marketshare {
+	display: grid;
+	gap: 12px;
+}
+
+.bar {
+	background: #edf1fb;
+	border-radius: 999px;
+	overflow: hidden;
+}
+
+.bar-fill {
+	height: 14px;
+	border-radius: 999px;
+}
+
+.bar-fill.player {
+	background: linear-gradient(90deg, #2b64f6, #22c4f5);
+}
+
+.bar-fill.competitor {
+	background: linear-gradient(90deg, #a0a8c5, #7c879f);
+}
+
+.market-row {
+	display: grid;
+	gap: 6px;
+}
+
+.market-row small {
+	color: #586174;
+}
+
+.status-note {
+	color: #586174;
+	font-size: 14px;
+}
+
+.section-divider {
+	margin: 18px 0;
+	height: 1px;
+	background: #e6ebf5;
+}
