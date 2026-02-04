@@ -58,11 +58,27 @@ button.secondary {
 	box-shadow: none;
 }
 
+select,
+input[type="number"] {
+	border: 1px solid #dce2f1;
+	border-radius: 8px;
+	padding: 6px 8px;
+	font-size: 14px;
+}
+
 .card {
 	background: #fff;
 	border-radius: 16px;
 	padding: 24px;
 	box-shadow: 0 14px 32px rgba(32, 48, 88, 0.08);
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 16px;
 }
 
 #mainScreen {
@@ -78,6 +94,7 @@ button.secondary {
 
 .game-layout {
 	display: grid;
+	grid-template-columns: 360px 1fr;
 	grid-template-columns: 320px 1fr;
 	gap: 24px;
 }
@@ -119,6 +136,77 @@ button.secondary {
 	gap: 8px;
 }
 
+.supplier-card.active {
+	border-color: #2b64f6;
+	box-shadow: 0 0 0 2px rgba(43, 100, 246, 0.1);
+}
+
+.product-list {
+	display: grid;
+	gap: 8px;
+}
+
+.product-row {
+	display: grid;
+	gap: 4px;
+	padding: 8px;
+	border-radius: 10px;
+	background: #f7f9fe;
+}
+
+.product-row small {
+	color: #6e788c;
+}
+
+.inventory-list {
+	display: grid;
+	gap: 12px;
+}
+
+.inventory-card {
+	background: #f7f9fe;
+	border-radius: 12px;
+	padding: 12px;
+	display: grid;
+	gap: 8px;
+}
+
+.inventory-card small {
+	color: #6e788c;
+	display: block;
+}
+
+.inventory-actions {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.inventory-actions label {
+	display: grid;
+	gap: 4px;
+	font-size: 13px;
+	color: #586174;
+}
+
+.marketing-actions {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-bottom: 8px;
+}
+
+.option-grid {
+	display: grid;
+	gap: 16px;
+}
+
+.option-grid label {
+	display: grid;
+	gap: 6px;
+	font-size: 14px;
+	color: #586174;
 .supplier-card strong {
 	font-size: 16px;
 }
@@ -173,6 +261,19 @@ button.secondary {
 
 .market-row small {
 	color: #586174;
+}
+
+.twitter-feed {
+	display: grid;
+	gap: 10px;
+}
+
+.tweet {
+	background: #f2f5fb;
+	border-radius: 10px;
+	padding: 10px 12px;
+	font-size: 14px;
+	color: #3a4357;
 }
 
 .status-note {
