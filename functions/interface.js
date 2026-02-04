@@ -252,13 +252,13 @@ function openCompanyModal(mode) {
 	modalRoot.id = "modalRoot";
 	document.body.appendChild(modalRoot);
 	const label = mode === "new" ? t("newGame") : t("loadGame");
-	modalRoot.innerHTML = `
+		modalRoot.innerHTML = `
 		<div class="modal-backdrop">
 			<div class="modal-card">
 				<h3>${label}</h3>
 				<label>
 					${t("companyPrompt")}
-					<input id="companyNameInput" type="text" value="${gameState.companyName}">
+					<input id="companyNameInput" type="text" value="${gameState.companyName}" onkeydown="handleCompanyInputKey(event, '${mode}')">
 				</label>
 				<div class="modal-actions">
 					<button class="secondary" onclick="closeCompanyModal()">${t("backToMenu")}</button>
@@ -269,6 +269,15 @@ function openCompanyModal(mode) {
 	`;
 	const input = document.getElementById("companyNameInput");
 	input?.focus();
+}
+
+function handleCompanyInputKey(event, mode) {
+	if (event.key === "Enter") {
+		confirmCompanyModal(mode);
+	}
+	if (event.key === "Escape") {
+		closeCompanyModal();
+	}
 }
 
 function closeCompanyModal() {
