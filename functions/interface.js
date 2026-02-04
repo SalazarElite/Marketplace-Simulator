@@ -38,6 +38,10 @@ const translations = {
 		saveSuccess: "Jogo salvo com sucesso.",
 		saveFail: "Não foi possível salvar.",
 		buyAction: "Comprar",
+		restockTitle: "Recompra automática",
+		restockThresholdLabel: "Recomprar abaixo de",
+		restockQuantityLabel: "Quantidade automática",
+		purchaseTotalLabel: "Total da compra",
 		sellPriceLabel: "Preço de venda",
 		stockLabel: "Estoque",
 		qualityLabel: "Qualidade",
@@ -82,6 +86,10 @@ const translations = {
 		saveSuccess: "Game saved successfully.",
 		saveFail: "Unable to save.",
 		buyAction: "Buy",
+		restockTitle: "Auto restock",
+		restockThresholdLabel: "Restock below",
+		restockQuantityLabel: "Auto quantity",
+		purchaseTotalLabel: "Purchase total",
 		sellPriceLabel: "Sell price",
 		stockLabel: "Stock",
 		qualityLabel: "Quality",
@@ -142,9 +150,9 @@ const suppliers = [
 ];
 
 const competitors = [
-	{ id: "A", name: "Loja Leste", rating: 3.8, price: 68, visibility: 62 },
-	{ id: "B", name: "Mega Centro", rating: 4.1, price: 74, visibility: 70 },
-	{ id: "C", name: "Outlet Sul", rating: 3.4, price: 58, visibility: 55 }
+	{ id: "A", name: "Loja Leste", rating: 3.8, reviews: 420, price: 68, visibility: 62 },
+	{ id: "B", name: "Mega Centro", rating: 4.1, reviews: 610, price: 74, visibility: 70 },
+	{ id: "C", name: "Outlet Sul", rating: 3.4, reviews: 310, price: 58, visibility: 55 }
 ];
 
 const gameState = {
@@ -154,11 +162,13 @@ const gameState = {
 	reviews: 0,
 	lastSales: 0,
 	lastRefunds: 0,
+	lastSoldItems: [],
 	marketShare: [],
 	visibility: 38,
 	companyName: "",
 	inventory: [],
 	feed: [],
+	customerCounts: [],
 	settings: {
 		resolution: resolutionOptions[1],
 		fullscreen: false,
@@ -167,7 +177,8 @@ const gameState = {
 	},
 	intervals: {
 		roundLoop: null,
-		autosave: null
+		autosave: null,
+		feedLoop: null
 	}
 };
 
@@ -264,10 +275,12 @@ async function newGame() {
 	gameState.reviews = 0;
 	gameState.lastSales = 0;
 	gameState.lastRefunds = 0;
+	gameState.lastSoldItems = [];
 	gameState.marketShare = [];
 	gameState.visibility = 38;
 	gameState.inventory = [];
 	gameState.feed = [];
+	gameState.customerCounts = [];
 	suppliers.forEach((supplier) => {
 		supplier.products.forEach((product) => {
 			product.quality = product.baseQuality;
@@ -278,6 +291,7 @@ async function newGame() {
 	renderGameScreen();
 	updateMarketShare();
 	startSimulationLoop();
+	startFeedLoop();
 	startAutosave();
 }
 
@@ -294,12 +308,13 @@ async function loadGame() {
 	}
 	const parsed = JSON.parse(save);
 	Object.assign(gameState, parsed, {
-		intervals: { roundLoop: null, autosave: null }
+		intervals: { roundLoop: null, autosave: null, feedLoop: null }
 	});
 	resetLoops();
 	renderGameScreen();
 	updateMarketShare();
 	startSimulationLoop();
+	startFeedLoop();
 	startAutosave();
 }
 
@@ -337,12 +352,22 @@ function resetLoops() {
 		clearInterval(gameState.intervals.autosave);
 		gameState.intervals.autosave = null;
 	}
+	if (gameState.intervals.feedLoop) {
+		clearInterval(gameState.intervals.feedLoop);
+		gameState.intervals.feedLoop = null;
+	}
 }
 
 function startSimulationLoop() {
 	gameState.intervals.roundLoop = setInterval(() => {
 		simulateRound();
-	}, 1000);
+	}, 5000);
+}
+
+function startFeedLoop() {
+	gameState.intervals.feedLoop = setInterval(() => {
+		updateFeed(gameState.lastSoldItems, gameState.lastSales, gameState.lastRefunds);
+	}, 30000);
 }
 
 function startAutosave() {
@@ -456,12 +481,16 @@ function renderGameScreen() {
 		const productsMarkup = supplier.products.map((product) => `
 			<div class="product-row">
 				<strong>${product.name}</strong>
-				<small>${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}</small>
+				<small data-product-stats="${product.id}">${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}</small>
 				<div class="inventory-actions">
 					<label>
 						${t("stockLabel")}
-						<input type="number" min="1" max="500" value="20" data-product="${product.id}" class="buy-qty">
+						<input type="number" min="1" max="500" value="20" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseTotal('${product.id}')">
 					</label>
+					<div class="purchase-total" data-product-total="${product.id}">
+						<span>${t("purchaseTotalLabel")}</span>
+						<strong>R$ ${Math.round(product.cost * 20)}</strong>
+					</div>
 					<button onclick="buyProduct('${product.id}', ${supplier.id})">${t("buyAction")}</button>
 				</div>
 			</div>
@@ -517,6 +546,7 @@ function renderGameScreen() {
 	updateStats();
 	renderInventory();
 	renderFeed();
+	renderSuppliers();
 }
 
 function findProduct(productId) {
@@ -559,11 +589,14 @@ function buyProduct(productId, supplierId) {
 			stock: quantity,
 			sellPrice: Math.round(product.cost * 1.4),
 			quality: product.quality,
-			cost: product.cost
+			cost: product.cost,
+			autoRestockThreshold: 0,
+			autoRestockQty: 0
 		});
 	}
 	updateStats();
 	renderInventory();
+	updatePurchaseTotal(productId);
 }
 
 function updateSellPrice(productId, value) {
@@ -604,6 +637,7 @@ function simulateRound() {
 
 	updateSuppliers();
 	applyRandomEvents();
+	handleAutoRestock();
 
 	gameState.inventory.forEach((item) => {
 		if (item.stock <= 0) {
@@ -629,13 +663,14 @@ function simulateRound() {
 	gameState.cash += totalRevenue - totalRefundValue;
 	gameState.lastSales = totalSales;
 	gameState.lastRefunds = totalRefunds;
+	gameState.lastSoldItems = soldItems;
 	updateReputation(soldItems, totalSales);
 	gameState.round += 1;
 
 	updateMarketShare();
 	updateStats();
 	renderInventory();
-	updateFeed(soldItems, totalSales, totalRefunds);
+	renderSuppliers();
 }
 
 function calculateDemand(item) {
@@ -654,7 +689,6 @@ function calculateRefundRate(quality) {
 
 function updateReputation(soldItems, totalSales) {
 	if (totalSales === 0) {
-		gameState.rating = Math.max(0, gameState.rating - 0.01);
 		return;
 	}
 	const avgQuality = soldItems.reduce((sum, item) => sum + item.quality, 0) / soldItems.length;
@@ -670,35 +704,60 @@ function updateReputation(soldItems, totalSales) {
 	gameState.reviews += newReviews;
 }
 
-function calculateStoreScore(rating, price, visibility) {
-	const ratingWeight = rating * 18;
+function calculateStoreScore(rating, reviews, price, visibility) {
+	const ratingWeight = (rating || 0) * 18;
+	const reviewWeight = Math.sqrt(Math.max(reviews || 0, 0)) * 4;
 	const priceWeight = Math.max(0.6, 1.4 - price / 95) * 100;
 	const visibilityWeight = visibility * 1.2;
-	return ratingWeight + priceWeight + visibilityWeight;
+	return ratingWeight + reviewWeight + priceWeight + visibilityWeight;
 }
 
 function updateMarketShare() {
 	const avgPrice = getAverageSellPrice() || 80;
-	const playerScore = calculateStoreScore(gameState.rating || 0, avgPrice, gameState.visibility);
+	const playerScore = calculateStoreScore(gameState.rating || 0, gameState.reviews, avgPrice, gameState.visibility);
 	const competitorScores = competitors.map((competitor) =>
-		calculateStoreScore(competitor.rating, competitor.price, competitor.visibility)
+		calculateStoreScore(competitor.rating, competitor.reviews, competitor.price, competitor.visibility)
 	);
-	const totalScore = playerScore + competitorScores.reduce((sum, value) => sum + value, 0);
-	let playerShare = totalScore > 0 ? playerScore / totalScore : 0.03;
-	if (gameState.round <= 3) {
-		playerShare = Math.max(playerShare, 0.03);
-	}
-	const adjustedTotal = playerShare + competitorScores.reduce((sum, value) => sum + value, 0);
-	const shares = [
-		{ name: "Você", value: playerShare / adjustedTotal, type: "player" },
-		...competitors.map((competitor, index) => ({
-			name: competitor.name,
-			value: competitorScores[index] / adjustedTotal,
-			type: "competitor"
-		}))
-	];
+	const totalCustomers = getCustomerPoolSize();
+	const customerSplit = allocateCustomers(totalCustomers, [playerScore, ...competitorScores]);
+	const playerCustomers = customerSplit[0];
+	const competitorCustomers = customerSplit.slice(1);
+	const playerPurchased = Math.min(gameState.lastSales, playerCustomers);
+	const purchasedTotals = [playerPurchased, ...competitorCustomers];
+	const totalPurchased = purchasedTotals.reduce((sum, value) => sum + value, 0);
+	const shares = purchasedTotals.map((value, index) => ({
+		name: index === 0 ? "Você" : competitors[index - 1].name,
+		value: totalPurchased > 0 ? value / totalPurchased : 0,
+		type: index === 0 ? "player" : "competitor"
+	}));
 	gameState.marketShare = shares;
+	gameState.customerCounts = [
+		{ name: "Você", value: playerCustomers },
+		...competitorCustomers.map((value, index) => ({ name: competitors[index].name, value }))
+	];
 	renderMarketShare();
+}
+
+function getCustomerPoolSize() {
+	const base = 120 + randomBetween(-10, 10);
+	const visibilityBoost = gameState.visibility / 12;
+	return Math.round(clamp(base + visibilityBoost, 80, 170));
+}
+
+function allocateCustomers(totalCustomers, scores) {
+	const totalScore = scores.reduce((sum, value) => sum + value, 0);
+	if (totalScore <= 0) {
+		const equal = Math.floor(totalCustomers / scores.length);
+		return scores.map(() => equal);
+	}
+	const raw = scores.map((value) => (value / totalScore) * totalCustomers);
+	const allocated = raw.map((value) => Math.max(1, Math.round(value)));
+	const delta = totalCustomers - allocated.reduce((sum, value) => sum + value, 0);
+	if (delta !== 0) {
+		const index = scores.indexOf(Math.max(...scores));
+		allocated[index] = Math.max(1, allocated[index] + delta);
+	}
+	return allocated;
 }
 
 function getAverageSellPrice() {
@@ -747,6 +806,14 @@ function renderInventory() {
 					${t("sellPriceLabel")}
 					<input type="number" min="1" value="${item.sellPrice}" onchange="updateSellPrice('${item.productId}', this.value)">
 				</label>
+				<label>
+					${t("restockThresholdLabel")}
+					<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" onchange="updateAutoRestock('${item.productId}', 'threshold', this.value)">
+				</label>
+				<label>
+					${t("restockQuantityLabel")}
+					<input type="number" min="0" value="${item.autoRestockQty ?? 0}" onchange="updateAutoRestock('${item.productId}', 'quantity', this.value)">
+				</label>
 			</div>
 		</div>
 	`).join("");
@@ -788,6 +855,64 @@ function updateSuppliers() {
 			product.cost = clamp(product.cost + costDelta, product.baseCost * 0.75, product.baseCost * 1.35);
 			product.quality = clamp(product.quality + qualityDelta, product.baseQuality * 0.8, product.baseQuality * 1.1);
 		});
+	});
+}
+
+function renderSuppliers() {
+	suppliers.forEach((supplier) => {
+		supplier.products.forEach((product) => {
+			const stats = document.querySelector(`[data-product-stats="${product.id}"]`);
+			if (stats) {
+				stats.textContent = `${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}`;
+			}
+			updatePurchaseTotal(product.id);
+		});
+	});
+}
+
+function updatePurchaseTotal(productId) {
+	const qtyInput = document.querySelector(`input[data-product="${productId}"]`);
+	const totalSlot = document.querySelector(`[data-product-total="${productId}"] strong`);
+	const details = findProduct(productId);
+	if (!qtyInput || !totalSlot || !details) {
+		return;
+	}
+	const quantity = Math.max(0, Number(qtyInput.value) || 0);
+	totalSlot.textContent = `R$ ${Math.round(details.product.cost * quantity)}`;
+}
+
+function updateAutoRestock(productId, field, value) {
+	const entry = gameState.inventory.find((item) => item.productId === productId);
+	if (!entry) {
+		return;
+	}
+	const parsed = Math.max(0, Number(value) || 0);
+	if (field === "threshold") {
+		entry.autoRestockThreshold = parsed;
+	} else if (field === "quantity") {
+		entry.autoRestockQty = parsed;
+	}
+}
+
+function handleAutoRestock() {
+	gameState.inventory.forEach((item) => {
+		const threshold = Number(item.autoRestockThreshold) || 0;
+		const quantity = Number(item.autoRestockQty) || 0;
+		if (threshold <= 0 || quantity <= 0 || item.stock >= threshold) {
+			return;
+		}
+		const details = findProduct(item.productId);
+		if (!details) {
+			return;
+		}
+		const totalCost = details.product.cost * quantity;
+		if (gameState.cash < totalCost) {
+			return;
+		}
+		gameState.cash -= totalCost;
+		item.stock += quantity;
+		item.cost = details.product.cost;
+		item.quality = details.product.quality;
 	});
 }
 
