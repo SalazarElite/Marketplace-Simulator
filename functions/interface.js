@@ -22,12 +22,35 @@ const translations = {
 		visibilityLabel: "Visibilidade",
 		lastSalesLabel: "Vendas (última)",
 		refundsLabel: "Reembolsos (última)",
+		xpLabel: "XP",
 		inventoryTitle: "Depósito",
 		suppliersTitle: "Fornecedores",
 		marketTitle: "Market share",
 		marketingTitle: "Marketing",
 		marketingHint: "Ações de marketing aumentam visibilidade e impactam as vendas.",
+		marketingCostLabel: "Custo",
 		twitterTitle: "Feed de clientes",
+		packagingTitle: "Empacotamento",
+		packagingOptions: {
+			simple: "Empacotamento simples",
+			conventional: "Empacotamento convencional",
+			premium: "Empacotamento premium"
+		},
+		packagingNotes: {
+			simple: "+10% chance de reembolso · R$ 5 por pedido",
+			conventional: "Sem bônus · R$ 10 por pedido",
+			premium: "-10% chance de reembolso · R$ 15 por pedido"
+		},
+		skillsTitle: "Árvore de habilidades",
+		skillsHint: "Use XP para desbloquear melhorias permanentes.",
+		skillUnlock: "Desbloquear",
+		skillUnlocked: "Desbloqueado",
+		skillRequirements: "Requisitos",
+		skillMarketShare: "Market share mínimo: 20%",
+		speedTitle: "Velocidade",
+		speedPause: "PAUSE",
+		speedNormal: "1x",
+		speedFast: "2x",
 		optionsResolution: "Resolução",
 		optionsFullscreen: "Tela cheia",
 		optionsLanguage: "Idioma",
@@ -46,10 +69,20 @@ const translations = {
 		stockLabel: "Estoque",
 		qualityLabel: "Qualidade",
 		costLabel: "Custo",
+		restockLocked: "Desbloqueie a habilidade para ativar a recompra automática.",
+		loadTitle: "Selecionar save",
+		loadEmpty: "Nenhum save encontrado.",
 		marketingActions: {
 			social: "Campanha social",
 			influencer: "Parceria com influencer",
 			frete: "Frete grátis relâmpago"
+		},
+		skills: {
+			autoRestock: "Recompra automática",
+			marketingSocial: "Marketing social",
+			marketingInfluencer: "Marketing com influencer",
+			marketingFrete: "Frete grátis relâmpago",
+			recommendedSeller: "Vendedor Recomendado"
 		}
 	},
 	en: {
@@ -70,12 +103,35 @@ const translations = {
 		visibilityLabel: "Visibility",
 		lastSalesLabel: "Last sales",
 		refundsLabel: "Last refunds",
+		xpLabel: "XP",
 		inventoryTitle: "Warehouse",
 		suppliersTitle: "Suppliers",
 		marketTitle: "Market share",
 		marketingTitle: "Marketing",
 		marketingHint: "Marketing actions increase visibility and influence sales.",
+		marketingCostLabel: "Cost",
 		twitterTitle: "Customer feed",
+		packagingTitle: "Packaging",
+		packagingOptions: {
+			simple: "Simple packaging",
+			conventional: "Conventional packaging",
+			premium: "Premium packaging"
+		},
+		packagingNotes: {
+			simple: "+10% refund chance · R$ 5 per order",
+			conventional: "No bonus · R$ 10 per order",
+			premium: "-10% refund chance · R$ 15 per order"
+		},
+		skillsTitle: "Skill tree",
+		skillsHint: "Spend XP to unlock permanent upgrades.",
+		skillUnlock: "Unlock",
+		skillUnlocked: "Unlocked",
+		skillRequirements: "Requirements",
+		skillMarketShare: "Minimum market share: 20%",
+		speedTitle: "Speed",
+		speedPause: "PAUSE",
+		speedNormal: "1x",
+		speedFast: "2x",
 		optionsResolution: "Resolution",
 		optionsFullscreen: "Fullscreen",
 		optionsLanguage: "Language",
@@ -94,10 +150,20 @@ const translations = {
 		stockLabel: "Stock",
 		qualityLabel: "Quality",
 		costLabel: "Cost",
+		restockLocked: "Unlock the skill to enable auto restock.",
+		loadTitle: "Select save",
+		loadEmpty: "No save found.",
 		marketingActions: {
 			social: "Social campaign",
 			influencer: "Influencer partnership",
 			frete: "Flash free shipping"
+		},
+		skills: {
+			autoRestock: "Auto restock",
+			marketingSocial: "Social marketing",
+			marketingInfluencer: "Influencer marketing",
+			marketingFrete: "Flash free shipping",
+			recommendedSeller: "Recommended Seller"
 		}
 	}
 };
@@ -149,11 +215,7 @@ const suppliers = [
 	}
 ];
 
-const competitors = [
-	{ id: "A", name: "Loja Leste", rating: 3.8, reviews: 420, price: 68, visibility: 62 },
-	{ id: "B", name: "Mega Centro", rating: 4.1, reviews: 610, price: 74, visibility: 70 },
-	{ id: "C", name: "Outlet Sul", rating: 3.4, reviews: 310, price: 58, visibility: 55 }
-];
+let competitors = [];
 
 const gameState = {
 	round: 1,
@@ -163,12 +225,25 @@ const gameState = {
 	lastSales: 0,
 	lastRefunds: 0,
 	lastSoldItems: [],
+	xp: 0,
 	marketShare: [],
 	visibility: 38,
 	companyName: "",
 	inventory: [],
 	feed: [],
 	customerCounts: [],
+	salesHistory: [],
+	packaging: "conventional",
+	gameSpeed: 1,
+	paused: false,
+	skills: {
+		autoRestock: false,
+		marketingSocial: false,
+		marketingInfluencer: false,
+		marketingFrete: false,
+		recommendedSeller: false
+	},
+	activeEvents: [],
 	settings: {
 		resolution: resolutionOptions[1],
 		fullscreen: false,
@@ -181,6 +256,66 @@ const gameState = {
 		feedLoop: null
 	}
 };
+
+const packagingOptions = {
+	simple: { refundDelta: 0.1, cost: 5 },
+	conventional: { refundDelta: 0, cost: 10 },
+	premium: { refundDelta: -0.1, cost: 15 }
+};
+
+const skillTree = {
+	autoRestock: { cost: 600, requirements: [] },
+	marketingSocial: { cost: 400, requirements: [] },
+	marketingInfluencer: { cost: 650, requirements: ["marketingSocial"] },
+	marketingFrete: { cost: 650, requirements: ["marketingSocial"] },
+	recommendedSeller: { cost: 2000, requirements: ["autoRestock", "marketingSocial", "marketingInfluencer", "marketingFrete"] }
+};
+
+const marketingActions = {
+	social: { cost: 450, boost: 6, skill: "marketingSocial" },
+	influencer: { cost: 900, boost: 12, skill: "marketingInfluencer" },
+	frete: { cost: 650, boost: 8, skill: "marketingFrete" }
+};
+
+const eventCatalog = [
+	{ id: "marketplaceOutage", name: "Marketplace fora do ar", duration: 5 },
+	{ id: "taxes", name: "Governo cobrando impostos", duration: 0 },
+	{ id: "packingFailure", name: "Equipamentos de empacotamento quebraram", duration: 0 },
+	{ id: "stolenCargo", name: "Carga roubada", duration: 1 },
+	{ id: "campaignBoost", name: "Campanha", duration: 5 }
+];
+
+function saveSettings() {
+	try {
+		localStorage.setItem("marketplace-settings", JSON.stringify(gameState.settings));
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+function loadSettings() {
+	try {
+		const saved = localStorage.getItem("marketplace-settings");
+		if (saved) {
+			const parsed = JSON.parse(saved);
+			Object.assign(gameState.settings, parsed);
+		}
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+function generateCompetitors() {
+	const names = ["Loja Leste", "Mega Centro", "Outlet Sul", "Ponto Norte"];
+	competitors = names.map((name, index) => ({
+		id: `C${index + 1}`,
+		name,
+		rating: Number(randomBetween(4.5, 4.9).toFixed(2)),
+		reviews: Math.round(randomBetween(1200, 3800)),
+		price: Math.round(randomBetween(62, 86)),
+		visibility: Math.round(randomBetween(68, 88))
+	}));
+}
 
 function t(key) {
 	const language = translations[gameState.settings.language] || translations.pt;
@@ -281,6 +416,20 @@ async function newGame() {
 	gameState.inventory = [];
 	gameState.feed = [];
 	gameState.customerCounts = [];
+	gameState.salesHistory = [];
+	gameState.packaging = "conventional";
+	gameState.gameSpeed = 1;
+	gameState.paused = false;
+	gameState.xp = 0;
+	gameState.skills = {
+		autoRestock: false,
+		marketingSocial: false,
+		marketingInfluencer: false,
+		marketingFrete: false,
+		recommendedSeller: false
+	};
+	gameState.activeEvents = [];
+	generateCompetitors();
 	suppliers.forEach((supplier) => {
 		supplier.products.forEach((product) => {
 			product.quality = product.baseQuality;
@@ -296,12 +445,13 @@ async function newGame() {
 }
 
 async function loadGame() {
-	const name = await openCompanyPrompt();
-	if (!name || !name.trim()) {
+	loadSettings();
+	const preservedSettings = { ...gameState.settings };
+	const saveName = await openSaveSelection();
+	if (!saveName) {
 		return;
 	}
-	const trimmedName = name.trim();
-	const save = localStorage.getItem(`marketplace-save-${trimmedName}`);
+	const save = localStorage.getItem(`marketplace-save-${saveName}`);
 	if (!save) {
 		alert(t("loadMissing"));
 		return;
@@ -310,6 +460,46 @@ async function loadGame() {
 	Object.assign(gameState, parsed, {
 		intervals: { roundLoop: null, autosave: null, feedLoop: null }
 	});
+	gameState.settings = preservedSettings;
+	gameState.paused = false;
+	if (!parsed.settings) {
+		gameState.settings = { ...gameState.settings };
+	}
+	if (!parsed.skills) {
+		gameState.skills = {
+			autoRestock: false,
+			marketingSocial: false,
+			marketingInfluencer: false,
+			marketingFrete: false,
+			recommendedSeller: false
+		};
+	}
+	if (!parsed.salesHistory) {
+		gameState.salesHistory = [];
+	}
+	if (!parsed.packaging) {
+		gameState.packaging = "conventional";
+	}
+	if (!parsed.activeEvents) {
+		gameState.activeEvents = [];
+	}
+	if (!parsed.xp) {
+		gameState.xp = 0;
+	}
+	if (!parsed.customerCounts) {
+		gameState.customerCounts = [];
+	}
+	if (!parsed.marketShare) {
+		gameState.marketShare = [];
+	}
+	if (!parsed.gameSpeed) {
+		gameState.gameSpeed = 1;
+	}
+	if (parsed.competitors) {
+		competitors = parsed.competitors;
+	} else {
+		generateCompetitors();
+	}
 	resetLoops();
 	renderGameScreen();
 	updateMarketShare();
@@ -335,9 +525,33 @@ function saveGame() {
 			companyName: gameState.companyName,
 			inventory: gameState.inventory,
 			feed: gameState.feed,
-			settings: gameState.settings
+			settings: gameState.settings,
+			xp: gameState.xp,
+			salesHistory: gameState.salesHistory,
+			packaging: gameState.packaging,
+			gameSpeed: gameState.gameSpeed,
+			paused: gameState.paused,
+			skills: gameState.skills,
+			activeEvents: gameState.activeEvents,
+			customerCounts: gameState.customerCounts,
+			competitors
 		};
-		localStorage.setItem(`marketplace-save-${gameState.companyName}`, JSON.stringify(snapshot));
+		const savedAt = new Date().toISOString();
+		const payload = { ...snapshot, savedAt };
+		localStorage.setItem(`marketplace-save-${gameState.companyName}`, JSON.stringify(payload));
+		updateSaveIndex(gameState.companyName, savedAt);
+	} catch (error) {
+		console.error(error);
+	}
+}
+
+function updateSaveIndex(name, savedAt) {
+	const key = "marketplace-save-index";
+	try {
+		const existing = JSON.parse(localStorage.getItem(key)) || [];
+		const filtered = existing.filter((entry) => entry.name !== name);
+		filtered.push({ name, savedAt });
+		localStorage.setItem(key, JSON.stringify(filtered));
 	} catch (error) {
 		console.error(error);
 	}
@@ -359,9 +573,16 @@ function resetLoops() {
 }
 
 function startSimulationLoop() {
+	if (gameState.intervals.roundLoop) {
+		clearInterval(gameState.intervals.roundLoop);
+	}
+	if (gameState.paused) {
+		return;
+	}
+	const interval = gameState.gameSpeed === 2 ? 1000 : 2000;
 	gameState.intervals.roundLoop = setInterval(() => {
 		simulateRound();
-	}, 5000);
+	}, interval);
 }
 
 function startFeedLoop() {
@@ -433,6 +654,7 @@ function updateResolution(value) {
 	}
 	gameState.settings.resolution = selected;
 	ipcRenderer.invoke("set-resolution", selected);
+	saveSettings();
 }
 
 function toggleFullscreen(value) {
@@ -446,16 +668,19 @@ function toggleFullscreen(value) {
 			document.exitFullscreen?.();
 		}
 	}
+	saveSettings();
 }
 
 function updateLanguage(language) {
 	gameState.settings.language = language;
 	renderMainMenu();
+	saveSettings();
 }
 
 function updateAutosaveMinutes(value) {
 	gameState.settings.autosaveMinutes = Number(value) || 5;
 	startAutosave();
+	saveSettings();
 }
 
 function quit() {
@@ -517,14 +742,29 @@ function renderGameScreen() {
 					<div class="stat"><span>${t("visibilityLabel")}</span><strong id="visibilityStat">0</strong></div>
 					<div class="stat"><span>${t("lastSalesLabel")}</span><strong id="salesStat">0</strong></div>
 					<div class="stat"><span>${t("refundsLabel")}</span><strong id="refundsStat">0</strong></div>
+					<div class="stat"><span>${t("xpLabel")}</span><strong id="xpStat">0</strong></div>
+				</div>
+				<div class="section-divider"></div>
+				<h3 class="panel-title">${t("speedTitle")}</h3>
+				<div class="speed-controls">
+					<button class="secondary" id="pauseButton" onclick="togglePause()">${t("speedPause")}</button>
+					<button class="secondary" id="speedNormal" onclick="setGameSpeed(1)">${t("speedNormal")}</button>
+					<button class="secondary" id="speedFast" onclick="setGameSpeed(2)">${t("speedFast")}</button>
 				</div>
 				<div class="section-divider"></div>
 				<h3 class="panel-title">${t("marketingTitle")}</h3>
 				<p class="status-note">${t("marketingHint")}</p>
 				<div class="marketing-actions">
-					<button onclick="runMarketing('social')">${t("marketingActions.social")}</button>
-					<button onclick="runMarketing('influencer')">${t("marketingActions.influencer")}</button>
-					<button onclick="runMarketing('frete')">${t("marketingActions.frete")}</button>
+					${renderMarketingButton("social")}
+					${renderMarketingButton("influencer")}
+					${renderMarketingButton("frete")}
+				</div>
+				<div class="section-divider"></div>
+				<h3 class="panel-title">${t("packagingTitle")}</h3>
+				<div class="packaging-options">
+					${renderPackagingOption("simple")}
+					${renderPackagingOption("conventional")}
+					${renderPackagingOption("premium")}
 				</div>
 				<div class="section-divider"></div>
 				<h3 class="panel-title">${t("twitterTitle")}</h3>
@@ -539,6 +779,10 @@ function renderGameScreen() {
 				<div class="section-divider"></div>
 				<h2 class="panel-title">${t("marketTitle")}</h2>
 				<div id="marketShareChart" class="marketshare"></div>
+				<div class="section-divider"></div>
+				<h2 class="panel-title">${t("skillsTitle")}</h2>
+				<p class="status-note">${t("skillsHint")}</p>
+				<div id="skillsTree" class="skills-tree"></div>
 			</section>
 		</div>
 	`;
@@ -547,6 +791,8 @@ function renderGameScreen() {
 	renderInventory();
 	renderFeed();
 	renderSuppliers();
+	renderSkills();
+	updateSpeedControls();
 }
 
 function findProduct(productId) {
@@ -576,6 +822,14 @@ function buyProduct(productId, supplierId) {
 		return;
 	}
 	gameState.cash -= totalCost;
+	const stolenEvent = gameState.activeEvents.find((event) => event.id === "stolenCargo");
+	if (stolenEvent) {
+		stolenEvent.remaining -= 1;
+		gameState.activeEvents = gameState.activeEvents.filter((event) => event.remaining > 0);
+		addFeedEntry("🚨 Carga roubada! Sua compra foi perdida.");
+		updateStats();
+		return;
+	}
 	const existing = gameState.inventory.find((item) => item.productId === productId);
 	if (existing) {
 		existing.stock += quantity;
@@ -609,13 +863,12 @@ function updateSellPrice(productId, value) {
 }
 
 function runMarketing(action) {
-	const actions = {
-		social: { cost: 450, boost: 6 },
-		influencer: { cost: 900, boost: 12 },
-		frete: { cost: 650, boost: 8 }
-	};
-	const selected = actions[action];
+	const selected = marketingActions[action];
 	if (!selected) {
+		return;
+	}
+	if (!gameState.skills[selected.skill]) {
+		alert("Habilidade ainda bloqueada.");
 		return;
 	}
 	if (gameState.cash < selected.cost) {
@@ -634,13 +887,18 @@ function simulateRound() {
 	let totalRefunds = 0;
 	let totalRevenue = 0;
 	let totalRefundValue = 0;
+	let totalCostOfGoods = 0;
+	let totalPackagingCost = 0;
 
 	updateSuppliers();
-	applyRandomEvents();
+	applyEvents();
 	handleAutoRestock();
 
 	gameState.inventory.forEach((item) => {
 		if (item.stock <= 0) {
+			return;
+		}
+		if (isMarketplaceOffline()) {
 			return;
 		}
 		const demand = calculateDemand(item);
@@ -653,24 +911,34 @@ function simulateRound() {
 		const refunds = Math.round(sold * refundRate);
 		const revenue = sold * item.sellPrice;
 		const refundValue = refunds * item.sellPrice;
+		const costOfGoods = sold * item.cost;
+		const packagingCost = sold * packagingOptions[gameState.packaging].cost;
 		totalSales += sold;
 		totalRefunds += refunds;
 		totalRevenue += revenue;
 		totalRefundValue += refundValue;
+		totalCostOfGoods += costOfGoods;
+		totalPackagingCost += packagingCost;
 		soldItems.push({ ...item, sold, refunds });
 	});
 
-	gameState.cash += totalRevenue - totalRefundValue;
+	const profit = totalRevenue - totalRefundValue - totalCostOfGoods - totalPackagingCost;
+	gameState.cash += totalRevenue - totalRefundValue - totalPackagingCost;
+	gameState.xp += Math.max(0, Math.round(profit));
 	gameState.lastSales = totalSales;
 	gameState.lastRefunds = totalRefunds;
 	gameState.lastSoldItems = soldItems;
-	updateReputation(soldItems, totalSales);
+	const extraRevenue = applyRecommendedSellerMinimum();
+	updateReputation(gameState.lastSoldItems, gameState.lastSales);
 	gameState.round += 1;
+	trackSalesHistory(totalRevenue + extraRevenue);
+	updateEventDurations();
 
 	updateMarketShare();
 	updateStats();
 	renderInventory();
 	renderSuppliers();
+	renderSkills();
 }
 
 function calculateDemand(item) {
@@ -678,13 +946,16 @@ function calculateDemand(item) {
 	const priceScore = Math.max(0.4, 1.3 - item.sellPrice / 120);
 	const qualityScore = item.quality / 100;
 	const randomness = randomBetween(0.8, 1.2);
-	const baseDemand = 8 + Math.floor(gameState.visibility / 5);
-	return Math.max(0, Math.round(baseDemand * visibilityFactor * priceScore * (0.6 + qualityScore) * randomness));
+	const baseDemand = Math.floor(getCustomerPoolSize() * 0.2);
+	const campaignMultiplier = isCampaignBoostActive() ? 3 : 1;
+	return Math.max(0, Math.round(baseDemand * visibilityFactor * priceScore * (0.6 + qualityScore) * randomness * campaignMultiplier));
 }
 
 function calculateRefundRate(quality) {
 	const qualityFactor = 1 - quality / 100;
-	return Math.min(0.25, 0.04 + qualityFactor * 0.12 + randomBetween(0, 0.03));
+	const packaging = packagingOptions[gameState.packaging];
+	const base = 0.04 + qualityFactor * 0.12 + randomBetween(0, 0.03);
+	return Math.min(0.4, Math.max(0, base + packaging.refundDelta));
 }
 
 function updateReputation(soldItems, totalSales) {
@@ -730,6 +1001,20 @@ function updateMarketShare() {
 		value: totalPurchased > 0 ? value / totalPurchased : 0,
 		type: index === 0 ? "player" : "competitor"
 	}));
+	const bankruptCompetitors = [];
+	shares.forEach((share, index) => {
+		if (share.type === "competitor" && share.value < 0.01) {
+			const competitor = competitors[index - 1];
+			if (competitor) {
+				bankruptCompetitors.push(competitor.name);
+			}
+		}
+	});
+	if (bankruptCompetitors.length > 0) {
+		competitors = competitors.filter((competitor) => !bankruptCompetitors.includes(competitor.name));
+		bankruptCompetitors.forEach((name) => addFeedEntry(`🏁 ${name} declarou falência e saiu do mercado.`));
+		return updateMarketShare();
+	}
 	gameState.marketShare = shares;
 	gameState.customerCounts = [
 		{ name: "Você", value: playerCustomers },
@@ -739,9 +1024,10 @@ function updateMarketShare() {
 }
 
 function getCustomerPoolSize() {
-	const base = 120 + randomBetween(-10, 10);
-	const visibilityBoost = gameState.visibility / 12;
-	return Math.round(clamp(base + visibilityBoost, 80, 170));
+	const base = 24000 + randomBetween(-2000, 2000);
+	const visibilityBoost = gameState.visibility * 120;
+	const campaignMultiplier = isCampaignBoostActive() ? 3 : 1;
+	return Math.round(clamp((base + visibilityBoost) * campaignMultiplier, 18000, 65000));
 }
 
 function allocateCustomers(totalCustomers, scores) {
@@ -795,6 +1081,7 @@ function renderInventory() {
 		inventoryList.innerHTML = `<p class="status-note">Estoque vazio. Compre itens dos fornecedores.</p>`;
 		return;
 	}
+	const autoRestockUnlocked = gameState.skills.autoRestock;
 	inventoryList.innerHTML = gameState.inventory.map((item) => `
 		<div class="inventory-card">
 			<strong>${item.name}</strong>
@@ -808,12 +1095,13 @@ function renderInventory() {
 				</label>
 				<label>
 					${t("restockThresholdLabel")}
-					<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" onchange="updateAutoRestock('${item.productId}', 'threshold', this.value)">
+					<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" onchange="updateAutoRestock('${item.productId}', 'threshold', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
 				</label>
 				<label>
 					${t("restockQuantityLabel")}
-					<input type="number" min="0" value="${item.autoRestockQty ?? 0}" onchange="updateAutoRestock('${item.productId}', 'quantity', this.value)">
+					<input type="number" min="0" value="${item.autoRestockQty ?? 0}" onchange="updateAutoRestock('${item.productId}', 'quantity', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
 				</label>
+				${autoRestockUnlocked ? "" : `<small class="status-note">${t("restockLocked")}</small>`}
 			</div>
 		</div>
 	`).join("");
@@ -826,6 +1114,7 @@ function updateStats() {
 	const visibilityStat = document.getElementById("visibilityStat");
 	const salesStat = document.getElementById("salesStat");
 	const refundsStat = document.getElementById("refundsStat");
+	const xpStat = document.getElementById("xpStat");
 
 	if (cashStat) {
 		cashStat.textContent = `R$ ${gameState.cash.toFixed(0)}`;
@@ -844,6 +1133,9 @@ function updateStats() {
 	}
 	if (refundsStat) {
 		refundsStat.textContent = gameState.lastRefunds;
+	}
+	if (xpStat) {
+		xpStat.textContent = gameState.xp;
 	}
 }
 
@@ -882,6 +1174,9 @@ function updatePurchaseTotal(productId) {
 }
 
 function updateAutoRestock(productId, field, value) {
+	if (!gameState.skills.autoRestock) {
+		return;
+	}
 	const entry = gameState.inventory.find((item) => item.productId === productId);
 	if (!entry) {
 		return;
@@ -895,6 +1190,9 @@ function updateAutoRestock(productId, field, value) {
 }
 
 function handleAutoRestock() {
+	if (!gameState.skills.autoRestock) {
+		return;
+	}
 	gameState.inventory.forEach((item) => {
 		const threshold = Number(item.autoRestockThreshold) || 0;
 		const quantity = Number(item.autoRestockQty) || 0;
@@ -917,16 +1215,7 @@ function handleAutoRestock() {
 }
 
 function applyRandomEvents() {
-	const roll = Math.random();
-	if (roll < 0.08) {
-		const impact = randomBetween(4, 10);
-		gameState.visibility = clamp(gameState.visibility - impact, 10, 100);
-		addFeedEntry("⚠️ Oscilação de mercado reduziu sua visibilidade.");
-	} else if (roll > 0.92) {
-		const boost = randomBetween(4, 10);
-		gameState.visibility = clamp(gameState.visibility + boost, 10, 100);
-		addFeedEntry("✨ Seu marketplace ganhou destaque espontâneo!");
-	}
+	triggerRandomEvent();
 }
 
 function updateFeed(soldItems, totalSales, totalRefunds) {
@@ -946,7 +1235,7 @@ function updateFeed(soldItems, totalSales, totalRefunds) {
 
 function addFeedEntry(message) {
 	gameState.feed.unshift({ message, timestamp: new Date().toLocaleTimeString() });
-	gameState.feed = gameState.feed.slice(0, 8);
+	gameState.feed = gameState.feed.slice(0, 50);
 	renderFeed();
 }
 
@@ -994,4 +1283,341 @@ function clamp(value, min, max) {
 	return Math.max(min, Math.min(max, value));
 }
 
+function renderSkills() {
+	const container = document.getElementById("skillsTree");
+	if (!container) {
+		return;
+	}
+	const marketShare = gameState.marketShare.find((entry) => entry.type === "player")?.value || 0;
+	container.innerHTML = Object.keys(skillTree).map((skillKey) => {
+		const skill = skillTree[skillKey];
+		const unlocked = gameState.skills[skillKey];
+		const requirementsMet = skill.requirements.every((req) => gameState.skills[req]);
+		const marketShareRequirement = skillKey === "recommendedSeller" ? marketShare >= 0.2 : true;
+		const canUnlock = !unlocked && requirementsMet && marketShareRequirement && gameState.xp >= skill.cost;
+		const requirementsLabel = [
+			...skill.requirements.map((req) => t(`skills.${req}`)),
+			...(skillKey === "recommendedSeller" ? [t("skillMarketShare")] : [])
+		];
+		return `
+			<div class="skill-card ${unlocked ? "unlocked" : ""}">
+				<div>
+					<strong>${t(`skills.${skillKey}`)}</strong>
+					<small>XP: ${skill.cost}</small>
+					${requirementsLabel.length ? `<small>${t("skillRequirements")}: ${requirementsLabel.join(", ")}</small>` : ""}
+				</div>
+				<button class="secondary" onclick="unlockSkill('${skillKey}')" ${canUnlock ? "" : "disabled"}>
+					${unlocked ? t("skillUnlocked") : t("skillUnlock")}
+				</button>
+			</div>
+		`;
+	}).join("");
+}
+
+function unlockSkill(skillKey) {
+	const skill = skillTree[skillKey];
+	if (!skill || gameState.skills[skillKey]) {
+		return;
+	}
+	const marketShare = gameState.marketShare.find((entry) => entry.type === "player")?.value || 0;
+	if (skillKey === "recommendedSeller" && marketShare < 0.2) {
+		alert(t("skillMarketShare"));
+		return;
+	}
+	if (!skill.requirements.every((req) => gameState.skills[req])) {
+		alert("Requisitos não atendidos.");
+		return;
+	}
+	if (gameState.xp < skill.cost) {
+		alert("XP insuficiente.");
+		return;
+	}
+	gameState.xp -= skill.cost;
+	gameState.skills[skillKey] = true;
+	addFeedEntry(`⭐ Habilidade desbloqueada: ${t(`skills.${skillKey}`)}.`);
+	renderSkills();
+	renderGameScreen();
+}
+
+function renderMarketingButton(actionKey) {
+	const action = marketingActions[actionKey];
+	if (!action) {
+		return "";
+	}
+	const unlocked = gameState.skills[action.skill];
+	return `
+		<div class="marketing-card">
+			<button onclick="runMarketing('${actionKey}')" ${unlocked ? "" : "disabled"}>${t(`marketingActions.${actionKey}`)}</button>
+			<small>${t("marketingCostLabel")}: R$ ${action.cost}</small>
+		</div>
+	`;
+}
+
+function renderPackagingOption(optionKey) {
+	const option = packagingOptions[optionKey];
+	const checked = gameState.packaging === optionKey;
+	return `
+		<label class="packaging-card ${checked ? "active" : ""}">
+			<input type="radio" name="packaging" value="${optionKey}" ${checked ? "checked" : ""} onchange="setPackaging('${optionKey}')">
+			<div>
+				<strong>${t(`packagingOptions.${optionKey}`)}</strong>
+				<small>${t(`packagingNotes.${optionKey}`)}</small>
+			</div>
+		</label>
+	`;
+}
+
+function setPackaging(optionKey) {
+	if (!packagingOptions[optionKey]) {
+		return;
+	}
+	gameState.packaging = optionKey;
+	renderGameScreen();
+}
+
+function setGameSpeed(speed) {
+	gameState.gameSpeed = speed;
+	gameState.paused = false;
+	startSimulationLoop();
+	updateSpeedControls();
+}
+
+function togglePause() {
+	gameState.paused = !gameState.paused;
+	if (gameState.paused) {
+		resetLoops();
+	} else {
+		startSimulationLoop();
+		startFeedLoop();
+		startAutosave();
+	}
+	updateSpeedControls();
+}
+
+function updateSpeedControls() {
+	const pauseButton = document.getElementById("pauseButton");
+	const speedNormal = document.getElementById("speedNormal");
+	const speedFast = document.getElementById("speedFast");
+	if (pauseButton) {
+		pauseButton.classList.toggle("active", gameState.paused);
+	}
+	if (speedNormal) {
+		speedNormal.classList.toggle("active", gameState.gameSpeed === 1 && !gameState.paused);
+	}
+	if (speedFast) {
+		speedFast.classList.toggle("active", gameState.gameSpeed === 2 && !gameState.paused);
+	}
+}
+
+function trackSalesHistory(totalRevenue) {
+	gameState.salesHistory.unshift(totalRevenue);
+	gameState.salesHistory = gameState.salesHistory.slice(0, 10);
+}
+
+function applyRecommendedSellerMinimum() {
+	if (!gameState.skills.recommendedSeller) {
+		return 0;
+	}
+	if (isMarketplaceOffline()) {
+		return 0;
+	}
+	if (gameState.lastSales >= 400) {
+		return 0;
+	}
+	const needed = 400 - gameState.lastSales;
+	let remaining = needed;
+	const itemsWithStock = gameState.inventory.filter((item) => item.stock > 0);
+	if (itemsWithStock.length === 0) {
+		return 0;
+	}
+	let extraRevenue = 0;
+	itemsWithStock.forEach((item) => {
+		if (remaining <= 0) {
+			return;
+		}
+		const extra = Math.min(item.stock, Math.ceil(remaining / itemsWithStock.length));
+		if (extra <= 0) {
+			return;
+		}
+		item.stock -= extra;
+		const refundRate = calculateRefundRate(item.quality);
+		const refunds = Math.round(extra * refundRate);
+		const revenue = extra * item.sellPrice;
+		extraRevenue += revenue;
+		const refundValue = refunds * item.sellPrice;
+		const packagingCost = extra * packagingOptions[gameState.packaging].cost;
+		const costOfGoods = extra * item.cost;
+		gameState.cash += revenue - refundValue - packagingCost;
+		gameState.lastSales += extra;
+		gameState.lastRefunds += refunds;
+		gameState.lastSoldItems.push({ ...item, sold: extra, refunds });
+		const profit = revenue - refundValue - packagingCost - costOfGoods;
+		gameState.xp += Math.max(0, Math.round(profit));
+		remaining -= extra;
+	});
+	return extraRevenue;
+}
+
+function applyEvents() {
+	applyRandomEvents();
+	gameState.activeEvents.forEach((event) => {
+		if (event.id === "taxes" && !event.processed) {
+			const sum = gameState.salesHistory.reduce((acc, value) => acc + value, 0);
+			const tax = Math.round(sum * 0.05);
+			gameState.cash -= tax;
+			event.processed = true;
+			addFeedEntry(`🏛️ Governo cobrou impostos de R$ ${tax}.`);
+		}
+		if (event.id === "packingFailure" && !event.processed) {
+			gameState.cash -= 10000;
+			event.processed = true;
+			addFeedEntry("🛠️ Equipamentos de empacotamento quebraram. Reparos de R$ 10.000.");
+		}
+	});
+}
+
+function triggerRandomEvent() {
+	if (gameState.activeEvents.some((event) => event.remaining > 0)) {
+		return;
+	}
+	const roll = Math.random();
+	if (roll > 0.2) {
+		return;
+	}
+	const event = eventCatalog[Math.floor(Math.random() * eventCatalog.length)];
+	const entry = { id: event.id, remaining: event.duration, processed: false };
+	gameState.activeEvents.push(entry);
+	switch (event.id) {
+	case "marketplaceOutage":
+		addFeedEntry("🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por 5 atualizações.");
+		break;
+	case "taxes":
+		addFeedEntry("🏛️ Governo anunciou cobrança de impostos.");
+		break;
+	case "packingFailure":
+		addFeedEntry("🛠️ Equipamentos de empacotamento quebraram.");
+		break;
+	case "stolenCargo":
+		addFeedEntry("🚨 Alerta de carga roubada. A próxima compra será perdida.");
+		break;
+	case "campaignBoost":
+		addFeedEntry("📈 Campanha geral: vendas triplicadas por 5 atualizações.");
+		break;
+	default:
+		break;
+	}
+}
+
+function updateEventDurations() {
+	gameState.activeEvents.forEach((event) => {
+		if (event.id === "stolenCargo") {
+			return;
+		}
+		if (event.remaining > 0) {
+			event.remaining -= 1;
+		}
+	});
+	gameState.activeEvents = gameState.activeEvents.filter((event) => {
+		if (event.id === "stolenCargo") {
+			return true;
+		}
+		if (event.remaining > 0) {
+			return true;
+		}
+		return !event.processed && (event.id === "taxes" || event.id === "packingFailure");
+	});
+}
+
+function isMarketplaceOffline() {
+	return gameState.activeEvents.some((event) => event.id === "marketplaceOutage" && event.remaining > 0);
+}
+
+function isCampaignBoostActive() {
+	return gameState.activeEvents.some((event) => event.id === "campaignBoost" && event.remaining > 0);
+}
+
+function openSaveSelection() {
+	return new Promise((resolve) => {
+		const existingModal = document.getElementById("modalRoot");
+		if (existingModal) {
+			existingModal.remove();
+		}
+
+		const modalRoot = document.createElement("div");
+		modalRoot.id = "modalRoot";
+		const saves = getSaveIndex();
+		const listItems = saves.length
+			? saves.map((entry) => `
+				<button class="save-entry" data-save="${entry.name}">
+					<strong>${entry.name}</strong>
+					<small>${new Date(entry.savedAt).toLocaleString()}</small>
+				</button>
+			`).join("")
+			: `<p class="status-note">${t("loadEmpty")}</p>`;
+		modalRoot.innerHTML = `
+			<div class="modal-backdrop">
+				<div class="modal-card">
+					<h3>${t("loadTitle")}</h3>
+					<div class="save-list">${listItems}</div>
+					<div class="modal-actions">
+						<button class="secondary" data-action="cancel">${t("cancelAction")}</button>
+					</div>
+				</div>
+			</div>
+		`;
+
+		document.body.appendChild(modalRoot);
+
+		const closeModal = (value) => {
+			modalRoot.remove();
+			resolve(value);
+		};
+
+		modalRoot.querySelectorAll(".save-entry").forEach((button) => {
+			button.addEventListener("click", () => closeModal(button.dataset.save));
+		});
+
+		const cancelButton = modalRoot.querySelector('[data-action="cancel"]');
+		cancelButton.addEventListener("click", () => closeModal(null));
+		modalRoot.querySelector(".modal-backdrop").addEventListener("click", (event) => {
+			if (event.target === modalRoot.querySelector(".modal-backdrop")) {
+				closeModal(null);
+			}
+		});
+	});
+}
+
+function getSaveIndex() {
+	try {
+		const saved = JSON.parse(localStorage.getItem("marketplace-save-index")) || [];
+		if (saved.length === 0) {
+			const generated = [];
+			for (let i = 0; i < localStorage.length; i += 1) {
+				const key = localStorage.key(i);
+				if (!key || !key.startsWith("marketplace-save-")) {
+					continue;
+				}
+				const raw = localStorage.getItem(key);
+				if (!raw) {
+					continue;
+				}
+				try {
+					const parsed = JSON.parse(raw);
+					if (parsed?.companyName && parsed?.savedAt) {
+						generated.push({ name: parsed.companyName, savedAt: parsed.savedAt });
+					}
+				} catch (error) {
+					console.error(error);
+				}
+			}
+			return generated.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+		}
+		return saved.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+	} catch (error) {
+		console.error(error);
+		return [];
+	}
+}
+
+loadSettings();
 renderMainMenu();

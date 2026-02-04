@@ -356,3 +356,108 @@ input[type="number"] {
 	gap: 10px;
 	flex-wrap: wrap;
 }
+
+.marketing-card {
+	display: grid;
+	gap: 6px;
+}
+
+.marketing-card small {
+	color: #586174;
+	font-size: 12px;
+}
+
+.packaging-options {
+	display: grid;
+	gap: 10px;
+}
+
+.packaging-card {
+	border: 1px solid #e3e9f5;
+	border-radius: 14px;
+	padding: 12px 14px;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	cursor: pointer;
+	background: #f7f9fe;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.packaging-card input {
+	accent-color: #2b64f6;
+}
+
+.packaging-card.active {
+	border-color: #2b64f6;
+	box-shadow: 0 0 0 2px rgba(43, 100, 246, 0.12);
+}
+
+.packaging-card small {
+	color: #6e788c;
+	font-size: 12px;
+	display: block;
+	margin-top: 4px;
+}
+
+.speed-controls {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.speed-controls button.active {
+	background: #2b64f6;
+	color: #fff;
+	box-shadow: 0 6px 16px rgba(43, 100, 246, 0.2);
+}
+
+.skills-tree {
+	display: grid;
+	gap: 10px;
+}
+
+.skill-card {
+	background: #f7f9fe;
+	border-radius: 12px;
+	padding: 12px 14px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	border: 1px solid transparent;
+}
+
+.skill-card.unlocked {
+	border-color: #2b64f6;
+}
+
+.skill-card small {
+	color: #586174;
+	font-size: 12px;
+	display: block;
+	margin-top: 4px;
+}
+
+.save-list {
+	display: grid;
+	gap: 8px;
+	max-height: 280px;
+	overflow-y: auto;
+}
+
+.save-entry {
+	display: grid;
+	gap: 4px;
+	background: #f7f9fe;
+	border-radius: 12px;
+	padding: 10px 12px;
+	border: 1px solid #e3e9f5;
+	color: #1a1f2e;
+	text-align: left;
+	box-shadow: none;
+}
+
+.save-entry:hover {
+	border-color: #2b64f6;
+}
