@@ -95,6 +95,7 @@ input[type="number"] {
 .game-layout {
 	display: grid;
 	grid-template-columns: 360px 1fr;
+	grid-template-columns: 320px 1fr;
 	gap: 24px;
 }
 
@@ -206,6 +207,27 @@ input[type="number"] {
 	gap: 6px;
 	font-size: 14px;
 	color: #586174;
+.supplier-card strong {
+	font-size: 16px;
+}
+
+.supplier-card button {
+	justify-self: start;
+}
+
+.controls {
+	display: grid;
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.controls label {
+	font-size: 14px;
+	color: #586174;
+}
+
+.controls input[type="range"] {
+	width: 100%;
 }
 
 .marketshare {
