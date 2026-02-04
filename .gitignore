@@ -1,0 +1,11 @@
+# Ignorar dependências
+node_modules/
+
+# Ignorar builds e binários
+dist/
+out/
+*.exe
+*.dll
+*.zip
+*.tar
+*.log
