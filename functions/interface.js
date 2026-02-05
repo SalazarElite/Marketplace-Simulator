@@ -76,6 +76,10 @@ const translations = {
 		speedPause: "PAUSE",
 		speedNormal: "1x",
 		speedFast: "2x",
+		dateLabel: "Data",
+		eventsTitle: "Eventos ativos",
+		eventsNone: "Nenhum evento ativo no momento.",
+		eventsDaysLeft: "dias restantes",
 		optionsResolution: "Resolução",
 		optionsFullscreen: "Tela cheia",
 		optionsLanguage: "Idioma",
@@ -111,6 +115,12 @@ const translations = {
 			marketingInfluencer: "Marketing com influencer",
 			marketingFrete: "Frete grátis relâmpago",
 			recommendedSeller: "Vendedor Recomendado"
+		},
+		events: {
+			marketplaceOutage: "Marketplace fora do ar",
+			taxes: "Governo cobrando impostos",
+			packingFailure: "Equipamentos de empacotamento quebraram",
+			campaignBoost: "Campanha geral"
 		}
 	},
 	en: {
@@ -181,6 +191,10 @@ const translations = {
 		speedPause: "PAUSE",
 		speedNormal: "1x",
 		speedFast: "2x",
+		dateLabel: "Date",
+		eventsTitle: "Active events",
+		eventsNone: "No active events right now.",
+		eventsDaysLeft: "days left",
 		optionsResolution: "Resolution",
 		optionsFullscreen: "Fullscreen",
 		optionsLanguage: "Language",
@@ -216,17 +230,63 @@ const translations = {
 			marketingInfluencer: "Influencer marketing",
 			marketingFrete: "Flash free shipping",
 			recommendedSeller: "Recommended Seller"
+		},
+		events: {
+			marketplaceOutage: "Marketplace offline",
+			taxes: "Government taxes",
+			packingFailure: "Packaging machines broke down",
+			campaignBoost: "Global campaign"
 		}
 	}
 };
 
-const resolutionOptions = [
+const baseResolutionOptions = [
 	{ label: "1024x576", width: 1024, height: 576 },
 	{ label: "1280x720", width: 1280, height: 720 },
 	{ label: "1366x768", width: 1366, height: 768 },
 	{ label: "1600x900", width: 1600, height: 900 },
 	{ label: "1920x1080", width: 1920, height: 1080 }
 ];
+
+function getNativeResolution() {
+	let width = 0;
+	let height = 0;
+	if (window?.require) {
+		try {
+			const { screen } = window.require("electron");
+			const primary = screen?.getPrimaryDisplay?.();
+			width = primary?.size?.width || primary?.workAreaSize?.width || 0;
+			height = primary?.size?.height || primary?.workAreaSize?.height || 0;
+		} catch (error) {
+			console.error(error);
+		}
+	}
+	if (!width || !height) {
+		width = window?.screen?.width || 0;
+		height = window?.screen?.height || 0;
+	}
+	return width && height ? { width, height } : null;
+}
+
+function buildResolutionOptions() {
+	const nativeResolution = getNativeResolution();
+	let options = baseResolutionOptions.slice();
+	if (nativeResolution) {
+		options = options.filter((option) => option.width <= nativeResolution.width && option.height <= nativeResolution.height);
+		const label = `${nativeResolution.width}x${nativeResolution.height}`;
+		options.push({ label, width: nativeResolution.width, height: nativeResolution.height });
+	}
+	const unique = [];
+	options.forEach((option) => {
+		if (!unique.some((entry) => entry.width === option.width && entry.height === option.height)) {
+			unique.push(option);
+		}
+	});
+	return unique.sort((a, b) => (a.width * a.height) - (b.width * b.height));
+}
+
+let resolutionOptions = buildResolutionOptions();
+const defaultResolution = resolutionOptions[1] || resolutionOptions[0];
 
 const suppliers = [
 	{
@@ -297,8 +357,9 @@ const gameState = {
 	},
 	activeEvents: [],
 	pendingNotices: [],
+	currentDate: new Date(),
 	settings: {
-		resolution: resolutionOptions[1],
+		resolution: defaultResolution,
 		fullscreen: false,
 		language: "pt",
 		autosaveMinutes: 5
@@ -338,7 +399,7 @@ const marketingActions = {
 };
 
 const eventCatalog = [
-	{ id: "marketplaceOutage", name: "Marketplace fora do ar", duration: 5 },
+	{ id: "marketplaceOutage", name: "Marketplace fora do ar", duration: () => randomInt(1, 7) },
 	{ id: "taxes", name: "Governo cobrando impostos", duration: 0 },
 	{ id: "packingFailure", name: "Equipamentos de empacotamento quebraram", duration: 0 },
 	{ id: "campaignBoost", name: "Campanha geral", duration: () => randomInt(5, 20) }
@@ -413,6 +474,7 @@ function loadSettings() {
 			if (parsed) {
 				Object.assign(gameState.settings, parsed);
 			}
+			refreshResolutionOptions();
 			return;
 		}
 		const saved = localStorage.getItem("marketplace-settings");
@@ -420,8 +482,21 @@ function loadSettings() {
 			const parsed = JSON.parse(saved);
 			Object.assign(gameState.settings, parsed);
 		}
+		refreshResolutionOptions();
 	} catch (error) {
 		console.error(error);
+	}
+}
+
+function refreshResolutionOptions() {
+	resolutionOptions = buildResolutionOptions();
+	if (!resolutionOptions.length) {
+		return;
+	}
+	const current = gameState.settings?.resolution;
+	const match = current && resolutionOptions.find((option) => option.width === current.width && option.height === current.height);
+	if (!match) {
+		gameState.settings.resolution = resolutionOptions[resolutionOptions.length - 1];
 	}
 }
 
@@ -653,6 +728,7 @@ async function newGame() {
 		recommendedSeller: false
 	};
 	gameState.activeEvents = [];
+	gameState.currentDate = new Date();
 	gameState.ui.activeTab = "inventory";
 	generateCompetitors();
 	suppliers.forEach((supplier) => {
@@ -691,6 +767,7 @@ async function loadGame() {
 	Object.assign(gameState, parsed, {
 		intervals: { roundLoop: null, autosave: null, feedLoop: null }
 	});
+	gameState.currentDate = parsed.currentDate ? new Date(parsed.currentDate) : new Date();
 	if (!gameState.ui) {
 		gameState.ui = { currentScreen: "menu", previousScreen: "menu", activeTab: "inventory" };
 	}
@@ -775,6 +852,7 @@ function saveGame({ auto = false } = {}) {
 			paused: gameState.paused,
 			skills: gameState.skills,
 			activeEvents: gameState.activeEvents,
+			currentDate: gameState.currentDate ? gameState.currentDate.toISOString() : null,
 			customerCounts: gameState.customerCounts,
 			competitors,
 			purchaseQuantities: gameState.purchaseQuantities,
@@ -896,6 +974,7 @@ function options() {
 	updateHeaderTexts();
 	setHeaderSpeedVisible(false);
 	setHeaderGameControlsEnabled(gameState.ui.previousScreen === "game");
+	refreshResolutionOptions();
 	const optionsMarkup = resolutionOptions.map((option) => {
 		const selected = option.width === gameState.settings.resolution.width && option.height === gameState.settings.resolution.height;
 		return `<option value="${option.width}x${option.height}" ${selected ? "selected" : ""}>${option.label}</option>`;
@@ -1022,7 +1101,7 @@ function renderGameScreen() {
 		const productsMarkup = supplier.products.map((product) => `
 			<div class="product-row">
 				<strong>${product.name}</strong>
-				<small data-product-stats="${product.id}">${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}</small>
+				<small data-product-stats="${product.id}">${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: ${formatCurrency(product.cost)}</small>
 				<div class="inventory-actions">
 					<label>
 						${t("stockLabel")}
@@ -1033,7 +1112,7 @@ function renderGameScreen() {
 					</div>
 					<div class="purchase-total" data-product-total="${product.id}">
 						<span>${t("purchaseTotalLabel")}</span>
-						<strong>R$ ${Math.round(product.cost * getPurchaseQuantity(product.id))}</strong>
+						<strong>${formatCurrency(product.cost * getPurchaseQuantity(product.id))}</strong>
 					</div>
 					<button onclick="buyProduct('${product.id}', ${supplier.id})">${t("buyAction")}</button>
 				</div>
@@ -1065,6 +1144,7 @@ function renderGameScreen() {
 	`).join("");
 
 	mainScreen.innerHTML = `
+		<div class="event-bar" id="eventBar"></div>
 		<div class="game-layout">
 			<section class="card">
 				<h2 class="panel-title">${gameState.companyName || t("companyNameLabel")}</h2>
@@ -1072,6 +1152,7 @@ function renderGameScreen() {
 					<div class="stat"><span>${t("cashLabel")}</span><strong id="cashStat">R$ 0</strong></div>
 					<div class="stat"><span>${t("ratingLabel")}</span><strong id="ratingStat">0.0</strong></div>
 					<div class="stat"><span>${t("reviewsLabel")}</span><strong id="reviewsStat">0</strong></div>
+					<div class="stat"><span>${t("dateLabel")}</span><strong id="dateStat">-</strong></div>
 					<div class="stat"><span>${t("visibilityLabel")}</span><strong id="visibilityStat">0</strong></div>
 					<div class="stat"><span>${t("lastSalesLabel")}</span><strong id="salesStat">0</strong></div>
 					<div class="stat"><span>${t("refundsLabel")}</span><strong id="refundsStat">0</strong></div>
@@ -1100,6 +1181,7 @@ function renderGameScreen() {
 	updateStats();
 	renderFeed();
 	renderTabContent({ supplierCards });
+	renderEventBar();
 	updateSpeedControls();
 	updateHeaderTexts();
 	setHeaderSpeedVisible(true);
@@ -1130,7 +1212,7 @@ function renderTabContent(payload = {}) {
 		const productsMarkup = supplier.products.map((product) => `
 			<div class="product-row">
 				<strong>${product.name}</strong>
-				<small data-product-stats="${product.id}">${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}</small>
+				<small data-product-stats="${product.id}">${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: ${formatCurrency(product.cost)}</small>
 				<div class="inventory-actions">
 					<label>
 						${t("stockLabel")}
@@ -1141,7 +1223,7 @@ function renderTabContent(payload = {}) {
 					</div>
 					<div class="purchase-total" data-product-total="${product.id}">
 						<span>${t("purchaseTotalLabel")}</span>
-						<strong>R$ ${Math.round(product.cost * getPurchaseQuantity(product.id))}</strong>
+						<strong>${formatCurrency(product.cost * getPurchaseQuantity(product.id))}</strong>
 					</div>
 					<button onclick="buyProduct('${product.id}', ${supplier.id})">${t("buyAction")}</button>
 				</div>
@@ -1351,8 +1433,10 @@ function simulateRound() {
 	const extraRevenue = applyRecommendedSellerMinimum();
 	updateReputation(gameState.lastSoldItems, gameState.lastSales);
 	gameState.round += 1;
+	advanceGameDate();
 	trackSalesHistory(totalRevenue + extraRevenue);
 	updateEventDurations();
+	renderEventBar();
 
 	updateMarketShare();
 	updateStats();
@@ -1455,12 +1539,35 @@ function updateMarketShare() {
 		bankruptCompetitors.forEach((name) => addFeedEntry(`🏁 ${name} declarou falência e saiu do mercado.`));
 		return updateMarketShare();
 	}
-	gameState.marketShare = shares;
+	gameState.marketShare = smoothMarketShares(shares);
 	gameState.customerCounts = [
 		{ name: "Você", value: playerCustomers },
 		...competitorCustomers.map((value, index) => ({ name: competitors[index].name, value }))
 	];
 	renderMarketShare();
+}
+
+function smoothMarketShares(nextShares) {
+	if (!gameState.marketShare.length) {
+		return nextShares;
+	}
+	const previousMap = new Map(gameState.marketShare.map((share) => [share.name, share.value]));
+	const smoothed = nextShares.map((share) => {
+		const previous = previousMap.get(share.name);
+		if (previous === undefined) {
+			return share;
+		}
+		const diff = share.value - previous;
+		const direction = diff >= 0 ? 1 : -1;
+		const step = Math.min(Math.abs(diff), 0.03);
+		const nextValue = clamp(previous + direction * step, 0, 1);
+		return { ...share, value: nextValue };
+	});
+	const total = smoothed.reduce((sum, share) => sum + share.value, 0);
+	if (total <= 0) {
+		return smoothed;
+	}
+	return smoothed.map((share) => ({ ...share, value: share.value / total }));
 }
 
 function getCustomerPoolSize() {
@@ -1526,7 +1633,7 @@ function renderInventory() {
 		<div class="inventory-card">
 			<strong>${item.name}</strong>
 			<small>${item.supplier}</small>
-			<small data-inventory-stats="${item.productId}">${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: R$ ${item.cost.toFixed(0)}</small>
+			<small data-inventory-stats="${item.productId}">${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: ${formatCurrency(item.cost)}</small>
 			<div class="inventory-actions stacked">
 				<div class="inventory-field">
 					<span>${t("stockLabel")}: <strong data-inventory-stock="${item.productId}">${item.stock}</strong></span>
@@ -1568,19 +1675,23 @@ function updateStats() {
 	const cashStat = document.getElementById("cashStat");
 	const ratingStat = document.getElementById("ratingStat");
 	const reviewsStat = document.getElementById("reviewsStat");
+	const dateStat = document.getElementById("dateStat");
 	const visibilityStat = document.getElementById("visibilityStat");
 	const salesStat = document.getElementById("salesStat");
 	const refundsStat = document.getElementById("refundsStat");
 	const xpStat = document.getElementById("xpStat");
 
 	if (cashStat) {
-		cashStat.textContent = `R$ ${gameState.cash.toFixed(0)}`;
+		cashStat.textContent = formatCurrency(gameState.cash);
 	}
 	if (ratingStat) {
 		ratingStat.textContent = gameState.reviews === 0 ? "-" : gameState.rating.toFixed(2);
 	}
 	if (reviewsStat) {
 		reviewsStat.textContent = gameState.reviews;
+	}
+	if (dateStat) {
+		dateStat.textContent = formatGameDate(gameState.currentDate);
 	}
 	if (visibilityStat) {
 		visibilityStat.textContent = `${gameState.visibility.toFixed(0)}%`;
@@ -1612,7 +1723,7 @@ function renderSuppliers() {
 		supplier.products.forEach((product) => {
 			const stats = document.querySelector(`[data-product-stats="${product.id}"]`);
 			if (stats) {
-				stats.textContent = `${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: R$ ${product.cost.toFixed(0)}`;
+				stats.textContent = `${t("qualityLabel")}: ${Math.round(product.quality)}/100 · ${t("costLabel")}: ${formatCurrency(product.cost)}`;
 			}
 			updatePurchaseTotal(product.id);
 		});
@@ -1645,7 +1756,7 @@ function updatePurchaseTotal(productId) {
 		...gameState.purchaseQuantities,
 		[productId]: quantity
 	};
-	totalSlot.textContent = `R$ ${Math.round(details.product.cost * quantity)}`;
+	totalSlot.textContent = formatCurrency(details.product.cost * quantity);
 }
 
 function adjustPurchaseQty(productId, delta) {
@@ -1686,7 +1797,7 @@ function updateInventoryStats() {
 		}
 		const stats = document.querySelector(`[data-inventory-stats="${item.productId}"]`);
 		if (stats) {
-			stats.textContent = `${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: R$ ${item.cost.toFixed(0)}`;
+			stats.textContent = `${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: ${formatCurrency(item.cost)}`;
 		}
 	});
 }
@@ -1734,7 +1845,23 @@ function handleAutoRestock() {
 
 function formatCurrency(value) {
 	const rounded = Math.round(value);
-	return `R$ ${rounded.toLocaleString("pt-BR")}`;
+	const locale = gameState.settings.language === "en" ? "en-US" : "pt-BR";
+	return `R$ ${rounded.toLocaleString(locale)}`;
+}
+
+function formatGameDate(date) {
+	if (!(date instanceof Date)) {
+		return "-";
+	}
+	const locale = gameState.settings.language === "en" ? "en-US" : "pt-BR";
+	return date.toLocaleDateString(locale);
+}
+
+function advanceGameDate() {
+	if (!(gameState.currentDate instanceof Date)) {
+		gameState.currentDate = new Date();
+	}
+	gameState.currentDate.setDate(gameState.currentDate.getDate() + 1);
 }
 
 function renderBank() {
@@ -1815,15 +1942,14 @@ function handleLoanPayments() {
 		return;
 	}
 	gameState.loan.nextPaymentIn -= 1;
-	if (gameState.loan.nextPaymentIn > 0) {
-		return;
-	}
-	gameState.cash -= gameState.loan.installmentValue;
-	gameState.loan.remainingInstallments -= 1;
-	if (gameState.loan.remainingInstallments <= 0) {
-		gameState.loan = null;
-	} else {
-		gameState.loan.nextPaymentIn = gameState.loan.paymentInterval;
+	if (gameState.loan.nextPaymentIn <= 0) {
+		gameState.cash -= gameState.loan.installmentValue;
+		gameState.loan.remainingInstallments -= 1;
+		if (gameState.loan.remainingInstallments <= 0) {
+			gameState.loan = null;
+		} else {
+			gameState.loan.nextPaymentIn = gameState.loan.paymentInterval;
+		}
 	}
 	if (gameState.ui.activeTab === "bank") {
 		renderBank();
@@ -1885,6 +2011,31 @@ function renderFeed() {
 			<small>${entry.timestamp}</small>
 		</div>
 	`).join("");
+}
+
+function renderEventBar() {
+	const bar = document.getElementById("eventBar");
+	if (!bar) {
+		return;
+	}
+	const activeEvents = gameState.activeEvents.filter((event) => event.remaining > 0);
+	if (activeEvents.length === 0) {
+		bar.innerHTML = `
+			<div class="event-bar-title">${t("eventsTitle")}</div>
+			<div class="event-bar-empty">${t("eventsNone")}</div>
+		`;
+		return;
+	}
+	const items = activeEvents.map((event) => `
+		<div class="event-pill">
+			<strong>${t(`events.${event.id}`)}</strong>
+			<span>${event.remaining} ${t("eventsDaysLeft")}</span>
+		</div>
+	`).join("");
+	bar.innerHTML = `
+		<div class="event-bar-title">${t("eventsTitle")}</div>
+		<div class="event-bar-items">${items}</div>
+	`;
 }
 
 function generatePraise(item) {
@@ -2035,7 +2186,7 @@ function renderMarketingButton(actionKey) {
 	return `
 		<div class="marketing-card">
 			<button onclick="runMarketing('${actionKey}')" ${unlocked ? "" : "disabled"}>${t(`marketingActions.${actionKey}`)}</button>
-			<small>${t("marketingCostLabel")}: R$ ${action.cost}</small>
+			<small>${t("marketingCostLabel")}: ${formatCurrency(action.cost)}</small>
 		</div>
 	`;
 }
@@ -2150,12 +2301,12 @@ function applyEvents() {
 			const tax = Math.round(sum * 0.05);
 			gameState.cash -= tax;
 			event.processed = true;
-			queueNotice(`🏛️ Governo cobrou impostos de R$ ${tax}.`);
+			queueNotice(`🏛️ Governo cobrou impostos de ${formatCurrency(tax)}.`);
 		}
 		if (event.id === "packingFailure" && !event.processed) {
 			gameState.cash -= 10000;
 			event.processed = true;
-			queueNotice("🛠️ Equipamentos de empacotamento quebraram. Reparos de R$ 10.000.");
+			queueNotice(`🛠️ Equipamentos de empacotamento quebraram. Reparos de ${formatCurrency(10000)}.`);
 		}
 	});
 }
@@ -2165,20 +2316,21 @@ function triggerRandomEvent() {
 		return;
 	}
 	const roll = Math.random();
-	if (roll < 0.005) {
+	if (roll < 0.001) {
+		addEventEntry("marketplaceOutage");
+		return;
+	}
+	if (roll < 0.006) {
 		addEventEntry("packingFailure");
 		return;
 	}
-	if (roll < 0.015) {
+	if (roll < 0.016) {
 		addEventEntry("campaignBoost");
 		return;
 	}
-	if (roll > 0.2) {
-		return;
+	if (roll < 0.2) {
+		addEventEntry("taxes");
 	}
-	const fallbackEvents = eventCatalog.filter((event) => event.id !== "packingFailure" && event.id !== "campaignBoost");
-	const event = fallbackEvents[Math.floor(Math.random() * fallbackEvents.length)];
-	addEventEntry(event.id);
 }
 
 function addEventEntry(eventId) {
@@ -2191,7 +2343,7 @@ function addEventEntry(eventId) {
 	gameState.activeEvents.push(entry);
 	switch (event.id) {
 	case "marketplaceOutage":
-		queueNotice("🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por 5 dias.");
+		queueNotice(`🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por ${duration} dias.`);
 		break;
 	case "taxes":
 		break;
@@ -2203,6 +2355,7 @@ function addEventEntry(eventId) {
 	default:
 		break;
 	}
+	renderEventBar();
 }
 
 function updateEventDurations() {
@@ -2217,6 +2370,7 @@ function updateEventDurations() {
 		}
 		return !event.processed && (event.id === "taxes" || event.id === "packingFailure");
 	});
+	renderEventBar();
 }
 
 function isMarketplaceOffline() {
