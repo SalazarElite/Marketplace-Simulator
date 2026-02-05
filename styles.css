@@ -291,6 +291,265 @@ input[type="number"] {
 	box-shadow: 0 8px 18px rgba(43, 100, 246, 0.25);
 }
 
+.subtab-bar {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin: 16px 0;
+}
+
+.subtab-button {
+	background: #eef1f8;
+	color: #1a1f2e;
+	box-shadow: none;
+	padding: 6px 14px;
+	border-radius: 999px;
+	font-size: 13px;
+}
+
+.subtab-button.active {
+	background: #2b64f6;
+	color: #fff;
+}
+
+.production-summary {
+	display: grid;
+	gap: 10px;
+}
+
+.summary-card {
+	background: #f3f6ff;
+	border-radius: 12px;
+	padding: 12px 14px;
+	border: 1px solid #dfe6ff;
+}
+
+.summary-details {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-top: 8px;
+	color: #586174;
+	font-size: 13px;
+}
+
+.plant-grid {
+	display: grid;
+	gap: 14px;
+}
+
+.plant-card {
+	background: #f7f9fe;
+	border-radius: 14px;
+	padding: 14px;
+	display: grid;
+	gap: 12px;
+	border: 1px solid #e3e9f5;
+}
+
+.plant-card.owned {
+	border-color: #2b64f6;
+	box-shadow: 0 0 0 2px rgba(43, 100, 246, 0.08);
+}
+
+.plant-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+}
+
+.plant-header small {
+	color: #6e788c;
+	display: block;
+	margin-top: 4px;
+}
+
+.plant-icon {
+	font-size: 28px;
+}
+
+.plant-meta {
+	display: grid;
+	gap: 6px;
+	color: #586174;
+	font-size: 13px;
+}
+
+.plant-field label {
+	display: grid;
+	gap: 6px;
+	font-size: 13px;
+	color: #586174;
+}
+
+.role-grid {
+	display: grid;
+	gap: 10px;
+}
+
+.role-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	background: #fff;
+	border-radius: 10px;
+	padding: 8px 10px;
+	border: 1px solid #e4e9f4;
+}
+
+.role-row small {
+	color: #6e788c;
+	font-size: 12px;
+	display: block;
+	margin-top: 4px;
+}
+
+.role-actions {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.role-actions span {
+	font-weight: 600;
+	min-width: 22px;
+	text-align: center;
+}
+
+.machinery-grid {
+	display: grid;
+	gap: 10px;
+}
+
+.machinery-card {
+	background: #fff;
+	border-radius: 10px;
+	padding: 10px;
+	border: 1px solid #e4e9f4;
+	display: grid;
+	gap: 6px;
+}
+
+.machinery-card small {
+	color: #6e788c;
+	font-size: 12px;
+}
+
+.city-map {
+	display: grid;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.map-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 10px;
+}
+
+.map-tile {
+	background: #e9f1ff;
+	border-radius: 12px;
+	padding: 10px;
+	display: grid;
+	gap: 6px;
+	place-items: center;
+	min-height: 90px;
+	text-align: center;
+	font-size: 12px;
+	color: #3b4254;
+	border: 1px solid #d8e3ff;
+}
+
+.map-tile span {
+	font-size: 22px;
+}
+
+.map-tile small {
+	color: #586174;
+}
+
+.map-tile.house {
+	background: #fff6e3;
+	border-color: #f3deb5;
+}
+
+.map-tile.smallBuilding {
+	background: #eef3ff;
+	border-color: #d7e0f8;
+}
+
+.map-tile.largeBuilding {
+	background: #f1f5ff;
+	border-color: #cdd9ff;
+}
+
+.map-tile.owned {
+	background: #e0f7f0;
+	border-color: #a8e5d4;
+}
+
+.map-tile.park {
+	background: #eff8e8;
+	border-color: #cbe7b8;
+}
+
+.map-legend {
+	background: #f7f9fe;
+	border-radius: 12px;
+	padding: 10px 12px;
+	border: 1px solid #e3e9f5;
+}
+
+.map-legend ul {
+	list-style: none;
+	display: grid;
+	gap: 6px;
+	margin-top: 8px;
+	font-size: 12px;
+	color: #586174;
+}
+
+.map-legend li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.legend-dot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	display: inline-block;
+}
+
+.legend-dot.empty {
+	background: #e9f1ff;
+	border: 1px solid #d8e3ff;
+}
+
+.legend-dot.house {
+	background: #fff6e3;
+	border: 1px solid #f3deb5;
+}
+
+.legend-dot.smallBuilding {
+	background: #eef3ff;
+	border: 1px solid #d7e0f8;
+}
+
+.legend-dot.largeBuilding {
+	background: #f1f5ff;
+	border: 1px solid #cdd9ff;
+}
+
+.legend-dot.owned {
+	background: #e0f7f0;
+	border: 1px solid #a8e5d4;
+}
+
 .stepper {
 	display: flex;
 	gap: 6px;
