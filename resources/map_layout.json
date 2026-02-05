@@ -1,0 +1,47 @@
+{
+  "background": "resources/background.png",
+  "lotPurchaseCost": 15000,
+  "playerBuildingLevels": [
+    {
+      "level": 1,
+      "image": "resources/player_buildings/small.png",
+      "maxEmployees": 20,
+      "maxMachines": 8,
+      "upgradeCost": 50000
+    },
+    {
+      "level": 2,
+      "image": "resources/player_buildings/medium.png",
+      "maxEmployees": 40,
+      "maxMachines": 16,
+      "upgradeCost": 100000
+    },
+    {
+      "level": 3,
+      "image": "resources/player_buildings/big.png",
+      "maxEmployees": 100,
+      "maxMachines": 80,
+      "upgradeCost": 500000
+    }
+  ],
+  "lots": [
+    { "id": "lot-01", "name": "Lote A1", "image": "resources/empty_lot.png", "x": 15, "y": 56, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-02", "name": "Lote A2", "image": "resources/empty_lot.png", "x": 30, "y": 47, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-03", "name": "Lote A3", "image": "resources/empty_lot.png", "x": 48, "y": 53, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-04", "name": "Lote B1", "image": "resources/empty_lot.png", "x": 63, "y": 43, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-05", "name": "Lote B2", "image": "resources/empty_lot.png", "x": 76, "y": 57, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-06", "name": "Lote C1", "image": "resources/empty_lot.png", "x": 22, "y": 30, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-07", "name": "Lote C2", "image": "resources/empty_lot.png", "x": 43, "y": 28, "width": 12, "height": 18, "purchasable": true },
+    { "id": "lot-08", "name": "Lote C3", "image": "resources/empty_lot.png", "x": 67, "y": 24, "width": 12, "height": 18, "purchasable": true }
+  ],
+  "decorations": [
+    { "id": "decor-01", "name": "Casa", "image": "resources/map_assets/house_1.png", "x": 7, "y": 18, "width": 10, "height": 14, "purchasable": false },
+    { "id": "decor-02", "name": "Casa", "image": "resources/map_assets/house_2.png", "x": 34, "y": 12, "width": 10, "height": 14, "purchasable": false },
+    { "id": "decor-03", "name": "Casa", "image": "resources/map_assets/house_3.png", "x": 83, "y": 19, "width": 10, "height": 14, "purchasable": false },
+    { "id": "decor-04", "name": "Parque", "image": "resources/map_assets/park_1.png", "x": 12, "y": 74, "width": 13, "height": 14, "purchasable": false },
+    { "id": "decor-05", "name": "Parque", "image": "resources/map_assets/park_2.png", "x": 40, "y": 74, "width": 13, "height": 14, "purchasable": false },
+    { "id": "decor-06", "name": "Parque", "image": "resources/map_assets/park_3.png", "x": 69, "y": 76, "width": 13, "height": 14, "purchasable": false },
+    { "id": "decor-07", "name": "Skyline", "image": "resources/map_assets/skyscraper_1.png", "x": 50, "y": 6, "width": 12, "height": 18, "purchasable": false },
+    { "id": "decor-08", "name": "Skyline", "image": "resources/map_assets/skyscraper_2.png", "x": 73, "y": 7, "width": 12, "height": 18, "purchasable": false }
+  ]
+}

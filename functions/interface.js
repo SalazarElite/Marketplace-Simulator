@@ -7,6 +7,56 @@ const path = window?.require ? window.require('path') : null;
 const SAVE_DIR = fs && path ? path.join(__dirname, "Savegames") : null;
 const CONFIG_FILE = fs && path ? path.join(__dirname, "config.json") : null;
 
+const MAP_LAYOUT_FILE = fs && path ? path.join(__dirname, "resources", "map_layout.json") : null;
+
+function getFallbackMapLayout() {
+	return {
+		background: "resources/background.png",
+		lotPurchaseCost: 15000,
+		playerBuildingLevels: [
+			{ level: 1, image: "resources/player_buildings/small.png", maxEmployees: 20, maxMachines: 8, upgradeCost: 50000 },
+			{ level: 2, image: "resources/player_buildings/medium.png", maxEmployees: 40, maxMachines: 16, upgradeCost: 100000 },
+			{ level: 3, image: "resources/player_buildings/big.png", maxEmployees: 100, maxMachines: 80, upgradeCost: 500000 }
+		],
+		lots: [],
+		decorations: []
+	};
+}
+
+function loadMapLayout() {
+	if (!MAP_LAYOUT_FILE || !fs) {
+		return getFallbackMapLayout();
+	}
+	try {
+		const raw = fs.readFileSync(MAP_LAYOUT_FILE, "utf8");
+		const parsed = JSON.parse(raw);
+		if (!Array.isArray(parsed.playerBuildingLevels) || !Array.isArray(parsed.lots)) {
+			return getFallbackMapLayout();
+		}
+		return parsed;
+	} catch (error) {
+		console.error(error);
+		return getFallbackMapLayout();
+	}
+}
+
+const mapLayout = loadMapLayout();
+const productionLots = mapLayout.lots || [];
+const lotPurchaseCost = Number(mapLayout.lotPurchaseCost) || 15000;
+const playerBuildingLevels = (mapLayout.playerBuildingLevels || []).slice().sort((a, b) => a.level - b.level);
+const maxBuildingLevel = playerBuildingLevels.length;
+
+function getBuildingLevel(level) {
+	return playerBuildingLevels.find((entry) => entry.level === level) || playerBuildingLevels[0];
+}
+
+function getLotLevel(lotId) {
+	return gameState.production.lotLevels?.[lotId] || 0;
+}
+
+function getLotById(lotId) {
+	return productionLots.find((entry) => entry.id === lotId);
+}
 const translations = {
 	pt: {
 		optionsTitle: "Opções",
@@ -68,8 +118,13 @@ const translations = {
 		productionMachinesLabel: "Máquinas",
 		productionNoPlants: "Compre um lote para iniciar sua produção.",
 		productionLotsTitle: "Mapa de lotes",
-		productionLotsHint: "Áreas construídas são mais caras, mas já vêm prontas para operar. Lotes cinza ainda não podem ser comprados.",
+		productionLotsHint: "Compre lotes vazios e evolua sua estrutura em até 3 níveis para aumentar capacidade.",
 		productionBuyLot: "Comprar lote",
+		productionUpgradeLot: "Melhorar lote",
+		productionLotLevel: "Nível",
+		productionSelectedLot: "Lote selecionado",
+		productionLotOwnedHint: "Este lote já é seu. Faça melhorias para expandir capacidade.",
+		productionLotMaxLevel: "Este lote já está no nível máximo.",
 		productionOwnedLot: "Adquirido",
 		productionLotSize: "Tamanho",
 		productionLotStructure: "Estrutura",
@@ -77,12 +132,6 @@ const translations = {
 		productionMachineBuy: "Comprar máquina",
 		productionMachineOwned: "Máquinas atuais",
 		productionMachineryHint: "Cada máquina aumenta a capacidade de produção da planta.",
-		productionLotStructures: {
-			empty: "Terreno vazio",
-			house: "Casa simples",
-			smallBuilding: "Prédio pequeno",
-			largeBuilding: "Prédio grande"
-		},
 		productionLotSizes: {
 			small: "Pequeno",
 			medium: "Médio",
@@ -90,12 +139,9 @@ const translations = {
 		},
 		productionMapLegend: "Legenda do mapa",
 		productionMapLegendItems: {
-			empty: "Área em branco",
-			house: "Casa simples",
-			smallBuilding: "Prédio pequeno",
-			largeBuilding: "Prédio grande",
-			owned: "Lote adquirido",
-			unavailable: "Indisponível"
+			empty: "Lote comprável",
+			owned: "Lote do jogador",
+			unavailable: "Sem saldo"
 		},
 		productionLotUnavailable: "Saldo insuficiente para compra.",
 		inventoryMiniChartLabel: "Estoque x vendas",
@@ -244,8 +290,13 @@ const translations = {
 		productionMachinesLabel: "Machines",
 		productionNoPlants: "Purchase a lot to start production.",
 		productionLotsTitle: "Lot map",
-		productionLotsHint: "Built areas cost more, but are ready to operate. Gray lots cannot be purchased yet.",
+		productionLotsHint: "Buy empty lots and upgrade them through 3 levels to increase capacity.",
 		productionBuyLot: "Buy lot",
+		productionUpgradeLot: "Upgrade lot",
+		productionLotLevel: "Level",
+		productionSelectedLot: "Selected lot",
+		productionLotOwnedHint: "This lot is already yours. Upgrade it to expand capacity.",
+		productionLotMaxLevel: "This lot is already at max level.",
 		productionOwnedLot: "Owned",
 		productionLotSize: "Size",
 		productionLotStructure: "Structure",
@@ -253,12 +304,6 @@ const translations = {
 		productionMachineBuy: "Buy machine",
 		productionMachineOwned: "Current machines",
 		productionMachineryHint: "Each machine increases the plant production capacity.",
-		productionLotStructures: {
-			empty: "Empty land",
-			house: "Simple house",
-			smallBuilding: "Small building",
-			largeBuilding: "Large building"
-		},
 		productionLotSizes: {
 			small: "Small",
 			medium: "Medium",
@@ -266,12 +311,9 @@ const translations = {
 		},
 		productionMapLegend: "Map legend",
 		productionMapLegendItems: {
-			empty: "Blank area",
-			house: "Simple house",
-			smallBuilding: "Small building",
-			largeBuilding: "Large building",
-			owned: "Owned lot",
-			unavailable: "Unavailable"
+			empty: "Purchasable lot",
+			owned: "Player lot",
+			unavailable: "Insufficient funds"
 		},
 		productionLotUnavailable: "Insufficient funds to purchase.",
 		inventoryMiniChartLabel: "Stock vs sales",
@@ -491,6 +533,7 @@ const gameState = {
 	loan: null,
 	production: {
 		lotsOwned: [],
+		lotLevels: {},
 		plants: []
 	},
 	ui: {
@@ -540,122 +583,11 @@ const productionLineRequirements = {
 	employees: 4
 };
 
-const minimumLotLines = 10;
-const lotBasePrices = {
-	empty: 20000,
-	house: 150000,
-	smallBuilding: 800000,
-	largeBuilding: 800000
-};
-const lotSizeMultipliers = {
-	small: 1,
-	medium: 1.25,
-	large: 1.6
-};
-const lotStructureMultipliers = {
-	empty: 1,
-	house: 1,
-	smallBuilding: 1,
-	largeBuilding: 1.25
-};
-
 const productionCatalog = [
 	{ id: "smart-speaker", name: "Caixa inteligente Aurora", baseQuality: 86 },
 	{ id: "smartwatch", name: "Relógio Pulse X", baseQuality: 82 },
 	{ id: "drone", name: "Drone Skyline Mini", baseQuality: 88 },
 	{ id: "hub", name: "Central Domus IoT", baseQuality: 84 }
-];
-
-function buildLotCapacity(lines) {
-	const totalLines = Math.max(lines, minimumLotLines);
-	return {
-		lines: totalLines,
-		maxEmployees: totalLines * productionLineRequirements.employees,
-		maxMachines: totalLines * productionLineRequirements.machines
-	};
-}
-
-function calculateLotPrice({ structure, size }) {
-	const base = lotBasePrices[structure] || lotBasePrices.empty;
-	const sizeMultiplier = lotSizeMultipliers[size] || 1;
-	const structureMultiplier = lotStructureMultipliers[structure] || 1;
-	return Math.round(base * sizeMultiplier * structureMultiplier);
-}
-
-function createProductionLot({ lines, ...lot }) {
-	const capacity = buildLotCapacity(lines);
-	return {
-		...lot,
-		price: lot.price ?? calculateLotPrice(lot),
-		...capacity
-	};
-}
-
-const productionLots = [
-	createProductionLot({
-		id: "lot-01",
-		name: "Quadra Central 12",
-		size: "small",
-		structure: "empty",
-		lines: 10,
-		mapIndex: 1
-	}),
-	createProductionLot({
-		id: "lot-02",
-		name: "Avenida Horizonte",
-		size: "medium",
-		structure: "house",
-		lines: 12,
-		mapIndex: 2
-	}),
-	createProductionLot({
-		id: "lot-03",
-		name: "Distrito Nova Luz",
-		size: "large",
-		structure: "smallBuilding",
-		lines: 16,
-		mapIndex: 3
-	}),
-	createProductionLot({
-		id: "lot-04",
-		name: "Zona Portuária",
-		size: "medium",
-		structure: "empty",
-		lines: 13,
-		mapIndex: 5
-	}),
-	createProductionLot({
-		id: "lot-05",
-		name: "Bairro Jardim Sul",
-		size: "small",
-		structure: "house",
-		lines: 10,
-		mapIndex: 6
-	}),
-	createProductionLot({
-		id: "lot-06",
-		name: "Setor Tecnológico",
-		size: "large",
-		structure: "largeBuilding",
-		lines: 20,
-		mapIndex: 8
-	}),
-	createProductionLot({
-		id: "lot-07",
-		name: "Praça do Lago",
-		size: "medium",
-		structure: "empty",
-		lines: 14,
-		mapIndex: 10
-	}),
-	createProductionLot({
-		id: "lot-08",
-		name: "Boulevard Norte",
-		size: "large",
-		structure: "smallBuilding",
-		lines: 18,
-		mapIndex: 11
-	})
 ];
 
 const machineryCatalog = [
@@ -989,6 +921,7 @@ async function newGame() {
 	gameState.loan = null;
 	gameState.production = {
 		lotsOwned: [],
+		lotLevels: {},
 		plants: []
 	};
 	gameState.skills = {
@@ -1093,18 +1026,26 @@ async function loadGame() {
 	if (!parsed.production) {
 		gameState.production = {
 			lotsOwned: [],
+			lotLevels: {},
 			plants: []
 		};
 	} else {
+		gameState.production.lotLevels = gameState.production.lotLevels || {};
 		gameState.production.plants = (gameState.production.plants || []).map((plant) => ({
 			...plant,
+			level: plant.level || gameState.production.lotLevels[plant.lotId] || 1,
 			machines: plant.machines ?? 0,
+			maxEmployees: plant.maxEmployees || getBuildingLevel(plant.level || 1).maxEmployees,
+			maxMachines: plant.maxMachines || getBuildingLevel(plant.level || 1).maxMachines,
 			productId: plant.productId || productionCatalog[0].id,
 			employees: productionRoles.reduce((acc, role) => ({
 				...acc,
 				[role.key]: plant.employees?.[role.key] ?? 0
 			}), {})
 		}));
+		gameState.production.plants.forEach((plant) => {
+			gameState.production.lotLevels[plant.lotId] = plant.level;
+		});
 	}
 	if (parsed.competitors) {
 		competitors = parsed.competitors;
@@ -1650,25 +1591,21 @@ function renderProductionTab() {
 		container.innerHTML = `
 			<h3 class="panel-title">${t("productionLotsTitle")}</h3>
 			<p class="status-note">${t("productionLotsHint")}</p>
-			<div class="city-map" onclick="closeLotPopup()">
-				<div class="map-viewport">
-					<div class="map-grid">
-						${renderLotMapTiles()}
-					</div>
+			<div class="city-map">
+				<div class="map-viewport map-viewport--image" style="background-image:url('${mapLayout.background}')">
+					${renderMapDecorations()}
+					${renderLotMapTiles()}
 				</div>
 				<div class="map-legend">
 					<strong>${t("productionMapLegend")}</strong>
 					<ul>
 						<li><span class="legend-dot empty"></span>${t("productionMapLegendItems.empty")}</li>
-						<li><span class="legend-dot house"></span>${t("productionMapLegendItems.house")}</li>
-						<li><span class="legend-dot smallBuilding"></span>${t("productionMapLegendItems.smallBuilding")}</li>
-						<li><span class="legend-dot largeBuilding"></span>${t("productionMapLegendItems.largeBuilding")}</li>
 						<li><span class="legend-dot owned"></span>${t("productionMapLegendItems.owned")}</li>
 						<li><span class="legend-dot unavailable"></span>${t("productionMapLegendItems.unavailable")}</li>
 					</ul>
 				</div>
-				<div class="lot-popup" id="lotPopup" aria-hidden="true"></div>
 			</div>
+			${renderLotPopupModal()}
 		`;
 		return;
 	}
@@ -1689,120 +1626,114 @@ function renderProductionTab() {
 	`;
 }
 
-function renderLotMapTiles() {
-	const totalTiles = 12;
-	const tiles = Array.from({ length: totalTiles }, (_, index) => {
-		const tileIndex = index + 1;
-		const lot = productionLots.find((entry) => entry.mapIndex === tileIndex);
-		if (!lot) {
-			return `<div class="map-tile park"><span>🌳</span><small>Parque</small></div>`;
-		}
-		const owned = gameState.production.lotsOwned.includes(lot.id);
-		const canAfford = gameState.cash >= lot.price;
-		const structureClass = owned ? "owned" : (canAfford ? lot.structure : "locked");
-		const icon = getLotIcon(lot.structure);
-		const sizeLabel = t(`productionLotSizes.${lot.size}`);
-		return `
-			<button class="map-tile ${structureClass}" type="button" data-lot-id="${lot.id}" onclick="selectLot('${lot.id}', event, this)">
-				<span>${icon}</span>
-				<small>${lot.name}</small>
-				<small class="map-tile-sub">${sizeLabel}</small>
-			</button>
-		`;
-	});
-	return tiles.join("");
+function renderMapDecorations() {
+	return (mapLayout.decorations || []).map((item) => `
+		<img class="map-decoration" src="${item.image}" alt="${item.name}" style="left:${item.x}%; top:${item.y}%; width:${item.width}%; height:${item.height}%;" />
+	`).join("");
 }
 
-function selectLot(lotId, event, tileElement) {
+function renderLotMapTiles() {
+	return productionLots.map((lot) => {
+		const owned = gameState.production.lotsOwned.includes(lot.id);
+		const canAfford = gameState.cash >= lotPurchaseCost;
+		const selected = gameState.ui.selectedLotId === lot.id;
+		const level = getLotLevel(lot.id);
+		const levelData = level > 0 ? getBuildingLevel(level) : null;
+		const lotImage = levelData?.image || lot.image;
+		const stateClass = owned ? "owned" : (canAfford ? "empty" : "locked");
+		return `
+			<button class="map-lot ${stateClass} ${selected ? "selected" : ""}" type="button" data-lot-id="${lot.id}" onclick="selectLot('${lot.id}', event)" style="left:${lot.x}%; top:${lot.y}%; width:${lot.width}%; height:${lot.height}%;">
+				<img src="${lotImage}" alt="${lot.name}">
+				<span class="map-lot-label">${lot.name}</span>
+				${level > 0 ? `<small class="map-lot-level">${t("productionLotLevel")} ${level}</small>` : ""}
+			</button>
+		`;
+	}).join("");
+}
+
+function selectLot(lotId, event) {
 	if (event) {
 		event.stopPropagation();
 	}
-	showLotPopup(lotId, tileElement);
+	showLotPopup(lotId);
 }
 
-function showLotPopup(lotId, tileElement) {
-	const lot = productionLots.find((entry) => entry.id === lotId);
-	const popup = document.getElementById("lotPopup");
-	const map = document.querySelector(".city-map");
-	if (!lot || !popup || !map || !tileElement) {
-		return;
-	}
-	if (gameState.ui.selectedLotId === lotId && popup.classList.contains("visible")) {
-		closeLotPopup();
+function showLotPopup(lotId) {
+	const lot = getLotById(lotId);
+	if (!lot) {
 		return;
 	}
 	gameState.ui.selectedLotId = lotId;
+	renderProductionTab();
+}
+
+function buildLotActionButton(lot, owned, level) {
+	if (!owned) {
+		const canBuy = gameState.cash >= lotPurchaseCost;
+		return `<button onclick="buyLot('${lot.id}')" ${canBuy ? "" : "disabled"}>${t("productionBuyLot")}</button>`;
+	}
+	if (level >= maxBuildingLevel) {
+		return `<button disabled>${t("productionLotMaxLevel")}</button>`;
+	}
+	const nextLevel = getBuildingLevel(level + 1);
+	const canUpgrade = gameState.cash >= nextLevel.upgradeCost;
+	return `<button onclick="upgradeLot('${lot.id}')" ${canUpgrade ? "" : "disabled"}>${t("productionUpgradeLot")} (${formatCurrency(nextLevel.upgradeCost)})</button>`;
+}
+
+function renderLotPopupModal() {
+	const lotId = gameState.ui.selectedLotId;
+	const lot = getLotById(lotId);
+	if (!lot) {
+		return "";
+	}
 	const owned = gameState.production.lotsOwned.includes(lot.id);
-	const canAfford = gameState.cash >= lot.price;
-	const sizeLabel = t(`productionLotSizes.${lot.size}`);
-	const structureLabel = t(`productionLotStructures.${lot.structure}`);
-	popup.innerHTML = `
-		<div class="lot-popup-header">
-			<div>
-				<strong>${lot.name}</strong>
-				<small>${sizeLabel} · ${structureLabel}</small>
+	const level = getLotLevel(lot.id);
+	const currentLevelData = level > 0 ? getBuildingLevel(level) : null;
+	const nextLevelData = level < maxBuildingLevel ? getBuildingLevel(Math.max(1, level + 1)) : null;
+	const employees = currentLevelData?.maxEmployees || 0;
+	const machines = currentLevelData?.maxMachines || 0;
+	const costLabel = owned
+		? (nextLevelData ? formatCurrency(nextLevelData.upgradeCost) : t("productionLotMaxLevel"))
+		: formatCurrency(lotPurchaseCost);
+	const helper = !owned
+		? `
+				<small class="status-note">${t("productionSelectedLot")}: ${lot.name}</small>`
+		: (level >= maxBuildingLevel
+			? `
+				<small class="status-note">${t("productionLotMaxLevel")}</small>`
+			: `
+				<small class="status-note">${t("productionLotOwnedHint")}</small>`);
+
+	return `
+		<div class="lot-modal-overlay" onclick="closeLotPopup()">
+			<div class="lot-modal" onclick="event.stopPropagation()">
+				<div class="lot-modal-header">
+					<strong>${lot.name}</strong>
+					<small>${t("productionLotLevel")}: ${level || 0}</small>
+				</div>
+				<div class="lot-modal-meta">
+					<span>${t("productionLotCapacity")}: ${employees} ${t("productionEmployeesLabel").toLowerCase()}, ${machines} ${t("productionMachinesLabel").toLowerCase()}</span>
+					<span>${t("costLabel")}: ${costLabel}</span>
+				</div>
+				<div class="lot-modal-actions">
+					<button class="secondary" onclick="closeLotPopup()">${t("cancelAction")}</button>
+					${buildLotActionButton(lot, owned, level)}
+				</div>${helper}
 			</div>
-			<span class="plant-icon">${getLotIcon(lot.structure)}</span>
 		</div>
-		<div class="lot-popup-meta">
-			<span>${t("productionLotCapacity")}: ${lot.maxEmployees} ${t("productionEmployeesLabel").toLowerCase()}, ${lot.maxMachines} ${t("productionMachinesLabel").toLowerCase()}</span>
-			<span>${t("costLabel")}: ${formatCurrency(lot.price)}</span>
-		</div>
-		<div class="lot-popup-actions">
-			<button class="secondary" onclick="closeLotPopup()">${t("cancelAction")}</button>
-			<button onclick="buyLot('${lot.id}')" ${owned || !canAfford ? "disabled" : ""}>
-				${owned ? t("productionOwnedLot") : t("productionBuyLot")}
-			</button>
-		</div>
-		${!owned && !canAfford ? `<small class="status-note">${t("productionLotUnavailable")}</small>` : ""}
 	`;
-	const tileRect = tileElement.getBoundingClientRect();
-	const mapRect = map.getBoundingClientRect();
-	const left = tileRect.left - mapRect.left + tileRect.width / 2;
-	const top = tileRect.top - mapRect.top;
-	popup.style.left = `${left}px`;
-	popup.style.top = `${top}px`;
-	popup.classList.add("visible");
-	popup.setAttribute("aria-hidden", "false");
-	document.querySelectorAll(".map-tile.selected").forEach((tile) => tile.classList.remove("selected"));
-	tileElement.classList.add("selected");
 }
 
 function closeLotPopup() {
-	const popup = document.getElementById("lotPopup");
-	if (!popup) {
-		return;
-	}
-	popup.classList.remove("visible");
-	popup.setAttribute("aria-hidden", "true");
 	gameState.ui.selectedLotId = null;
-	document.querySelectorAll(".map-tile.selected").forEach((tile) => tile.classList.remove("selected"));
+	renderProductionTab();
 }
 
 function updateLotMapAvailability() {
 	if (gameState.ui.activeTab !== "production" || gameState.ui.productionTab !== "lots") {
 		return;
 	}
-	const tiles = document.querySelectorAll(".map-tile[data-lot-id]");
-	tiles.forEach((tile) => {
-		const lotId = tile.dataset.lotId;
-		const lot = productionLots.find((entry) => entry.id === lotId);
-		if (!lot) {
-			return;
-		}
-		const owned = gameState.production.lotsOwned.includes(lotId);
-		const canAfford = gameState.cash >= lot.price;
-		tile.classList.remove("empty", "house", "smallBuilding", "largeBuilding", "owned", "locked");
-		const nextClass = owned ? "owned" : (canAfford ? lot.structure : "locked");
-		tile.classList.add(nextClass);
-		tile.setAttribute("aria-disabled", owned || !canAfford ? "true" : "false");
-	});
-	if (gameState.ui.selectedLotId) {
-		const selectedTile = document.querySelector(`.map-tile[data-lot-id="${gameState.ui.selectedLotId}"]`);
-		if (selectedTile) {
-			showLotPopup(gameState.ui.selectedLotId, selectedTile);
-		}
-	}
+	renderProductionTab();
 }
 
 function renderPlantEmployeeCards() {
@@ -1818,7 +1749,7 @@ function renderPlantEmployeeCards() {
 						<div class="plant-header">
 							<div>
 								<strong>${t("productionPlant")} ${plant.name}</strong>
-								<small>${t(`productionLotSizes.${plant.size}`)} · ${t(`productionLotStructures.${plant.structure}`)}</small>
+								<small>${t("productionLotLevel")} ${plant.level || 1}</small>
 							</div>
 							<span class="plant-icon">🏭</span>
 						</div>
@@ -1875,7 +1806,7 @@ function renderMachineryCards() {
 					<div class="plant-header">
 						<div>
 							<strong>${t("productionPlant")} ${plant.name}</strong>
-							<small>${t(`productionLotSizes.${plant.size}`)} · ${t(`productionLotStructures.${plant.structure}`)}</small>
+							<small>${t("productionLotLevel")} ${plant.level || 1}</small>
 						</div>
 						<span class="plant-icon">🛠️</span>
 					</div>
@@ -1896,19 +1827,6 @@ function renderMachineryCards() {
 			`).join("")}
 		</div>
 	`;
-}
-
-function getLotIcon(structure) {
-	switch (structure) {
-	case "house":
-		return "🏠";
-	case "smallBuilding":
-		return "🏢";
-	case "largeBuilding":
-		return "🏬";
-	default:
-		return "🟩";
-	}
 }
 
 function getPlantEmployeeTotal(plant) {
@@ -1981,11 +1899,11 @@ function adjustPlantStaff(plantId, roleKey, delta) {
 }
 
 function buyLot(lotId) {
-	const lot = productionLots.find((entry) => entry.id === lotId);
+	const lot = getLotById(lotId);
 	if (!lot || gameState.production.lotsOwned.includes(lotId)) {
 		return;
 	}
-	if (gameState.cash < lot.price) {
+	if (gameState.cash < lotPurchaseCost) {
 		showMessageModal({
 			title: t("insufficientFundsTitle"),
 			message: t("insufficientFundsMessage"),
@@ -1993,21 +1911,66 @@ function buyLot(lotId) {
 		});
 		return;
 	}
-	gameState.cash -= lot.price;
+	const level = getBuildingLevel(1);
+	gameState.cash -= lotPurchaseCost;
 	gameState.production.lotsOwned.push(lotId);
+	gameState.production.lotLevels[lotId] = 1;
 	gameState.production.plants.push({
 		id: `plant-${lot.id}`,
 		lotId: lot.id,
 		name: lot.name,
-		size: lot.size,
-		structure: lot.structure,
-		maxEmployees: lot.maxEmployees,
-		maxMachines: lot.maxMachines,
+		level: 1,
+		maxEmployees: level.maxEmployees,
+		maxMachines: level.maxMachines,
 		machines: 0,
 		productId: productionCatalog[0].id,
 		employees: productionRoles.reduce((acc, role) => ({ ...acc, [role.key]: 0 }), {})
 	});
 	queueNotice(`🏗️ Lote adquirido: ${lot.name}.`);
+	updateStats();
+	renderProductionTab();
+}
+
+function upgradeLot(lotId) {
+	if (!gameState.production.lotsOwned.includes(lotId)) {
+		return;
+	}
+	const currentLevel = getLotLevel(lotId);
+	if (currentLevel >= maxBuildingLevel) {
+		return;
+	}
+	const nextLevel = getBuildingLevel(currentLevel + 1);
+	if (!nextLevel || gameState.cash < nextLevel.upgradeCost) {
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: t("insufficientFundsMessage"),
+			confirmLabel: t("confirmAction")
+		});
+		return;
+	}
+	gameState.cash -= nextLevel.upgradeCost;
+	gameState.production.lotLevels[lotId] = nextLevel.level;
+	const plant = gameState.production.plants.find((entry) => entry.lotId === lotId);
+	if (plant) {
+		plant.level = nextLevel.level;
+		plant.maxEmployees = nextLevel.maxEmployees;
+		plant.maxMachines = nextLevel.maxMachines;
+		plant.machines = Math.min(plant.machines, plant.maxMachines);
+		const overflow = Math.max(0, getPlantEmployeeTotal(plant) - plant.maxEmployees);
+		if (overflow > 0) {
+			let left = overflow;
+			for (const role of productionRoles) {
+				if (!left) {
+					break;
+				}
+				const current = plant.employees[role.key] || 0;
+				const remove = Math.min(current, left);
+				plant.employees[role.key] = current - remove;
+				left -= remove;
+			}
+		}
+	}
+	queueNotice(`🏗️ ${t("productionUpgradeLot")}: ${lotId} ${t("productionLotLevel")} ${nextLevel.level}.`);
 	updateStats();
 	renderProductionTab();
 }
