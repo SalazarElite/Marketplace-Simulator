@@ -441,26 +441,48 @@ input[type="number"] {
 	display: grid;
 	gap: 16px;
 	margin-bottom: 16px;
+	position: relative;
+}
+
+.map-viewport {
+	background: #f7f9fe;
+	border-radius: 16px;
+	border: 1px solid #e3e9f5;
+	padding: 20px;
+	overflow: hidden;
 }
 
 .map-grid {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 10px;
+	grid-template-columns: repeat(4, 92px);
+	grid-auto-rows: 92px;
+	gap: 12px;
+	justify-content: center;
+	transform: rotate(45deg) scaleY(0.82);
+	transform-origin: top center;
 }
 
 .map-tile {
 	background: #e9f1ff;
-	border-radius: 12px;
-	padding: 10px;
+	border-radius: 14px;
+	padding: 8px;
 	display: grid;
 	gap: 6px;
 	place-items: center;
-	min-height: 90px;
+	min-height: 88px;
 	text-align: center;
 	font-size: 12px;
 	color: #3b4254;
 	border: 1px solid #d8e3ff;
+	box-shadow: none;
+	transform: rotate(-45deg) scaleY(1.22);
+	cursor: pointer;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.map-tile:hover {
+	transform: rotate(-45deg) scaleY(1.22);
+	box-shadow: 0 8px 18px rgba(32, 48, 88, 0.12);
 }
 
 .map-tile span {
@@ -469,6 +491,15 @@ input[type="number"] {
 
 .map-tile small {
 	color: #586174;
+}
+
+.map-tile-sub {
+	font-size: 11px;
+}
+
+.map-tile.selected {
+	border-color: #2b64f6;
+	box-shadow: 0 0 0 2px rgba(43, 100, 246, 0.2);
 }
 
 .map-tile.house {
@@ -494,6 +525,7 @@ input[type="number"] {
 .map-tile.park {
 	background: #eff8e8;
 	border-color: #cbe7b8;
+	cursor: default;
 }
 
 .map-legend {
@@ -548,6 +580,69 @@ input[type="number"] {
 .legend-dot.owned {
 	background: #e0f7f0;
 	border: 1px solid #a8e5d4;
+}
+
+.lot-popup {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	transform: translate(-50%, -12px);
+	background: #ffffff;
+	border-radius: 14px;
+	border: 1px solid #dfe6ff;
+	padding: 12px 14px;
+	width: min(280px, 90%);
+	box-shadow: 0 18px 40px rgba(20, 28, 45, 0.18);
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+	z-index: 5;
+}
+
+.lot-popup::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: -10px;
+	transform: translateX(-50%);
+	border-width: 10px 10px 0 10px;
+	border-style: solid;
+	border-color: #ffffff transparent transparent transparent;
+	filter: drop-shadow(0 2px 4px rgba(20, 28, 45, 0.12));
+}
+
+.lot-popup.visible {
+	opacity: 1;
+	pointer-events: auto;
+	transform: translate(-50%, -24px);
+}
+
+.lot-popup-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.lot-popup-header small {
+	color: #6e788c;
+	display: block;
+	margin-top: 4px;
+}
+
+.lot-popup-meta {
+	display: grid;
+	gap: 6px;
+	margin: 10px 0;
+	color: #586174;
+	font-size: 13px;
+}
+
+.lot-popup-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	flex-wrap: wrap;
 }
 
 .stepper {
