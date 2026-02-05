@@ -68,7 +68,7 @@ const translations = {
 		productionMachinesLabel: "Máquinas",
 		productionNoPlants: "Compre um lote para iniciar sua produção.",
 		productionLotsTitle: "Mapa de lotes",
-		productionLotsHint: "Áreas construídas são mais caras, mas já vêm prontas para operar.",
+		productionLotsHint: "Áreas construídas são mais caras, mas já vêm prontas para operar. Lotes cinza ainda não podem ser comprados.",
 		productionBuyLot: "Comprar lote",
 		productionOwnedLot: "Adquirido",
 		productionLotSize: "Tamanho",
@@ -94,8 +94,11 @@ const translations = {
 			house: "Casa simples",
 			smallBuilding: "Prédio pequeno",
 			largeBuilding: "Prédio grande",
-			owned: "Lote adquirido"
+			owned: "Lote adquirido",
+			unavailable: "Indisponível"
 		},
+		productionLotUnavailable: "Saldo insuficiente para compra.",
+		inventoryMiniChartLabel: "Estoque x vendas",
 		bankTitle: "Banco",
 		bankHint: "Escolha um empréstimo para aumentar seu caixa agora e pagar ao longo dos dias.",
 		bankActiveLoan: "Empréstimo ativo",
@@ -146,6 +149,8 @@ const translations = {
 		saveSuccess: "Jogo Salvo com Sucesso",
 		saveAuto: "Jogo salvo automaticamente.",
 		saveFail: "Não foi possível salvar.",
+		victoryTitle: "Vitória!",
+		victoryMessage: "Você conquistou mais de 90% de market share e se tornou líder absoluto do mercado.",
 		buyAction: "Comprar",
 		restockTitle: "Recompra automática",
 		restockThresholdLabel: "Recomprar abaixo de",
@@ -239,7 +244,7 @@ const translations = {
 		productionMachinesLabel: "Machines",
 		productionNoPlants: "Purchase a lot to start production.",
 		productionLotsTitle: "Lot map",
-		productionLotsHint: "Built areas cost more, but are ready to operate.",
+		productionLotsHint: "Built areas cost more, but are ready to operate. Gray lots cannot be purchased yet.",
 		productionBuyLot: "Buy lot",
 		productionOwnedLot: "Owned",
 		productionLotSize: "Size",
@@ -265,8 +270,11 @@ const translations = {
 			house: "Simple house",
 			smallBuilding: "Small building",
 			largeBuilding: "Large building",
-			owned: "Owned lot"
+			owned: "Owned lot",
+			unavailable: "Unavailable"
 		},
+		productionLotUnavailable: "Insufficient funds to purchase.",
+		inventoryMiniChartLabel: "Stock vs sales",
 		bankTitle: "Bank",
 		bankHint: "Choose a loan to boost your cash now and repay over days.",
 		bankActiveLoan: "Active loan",
@@ -317,6 +325,8 @@ const translations = {
 		saveSuccess: "Game saved successfully.",
 		saveAuto: "Game saved automatically.",
 		saveFail: "Unable to save.",
+		victoryTitle: "Victory!",
+		victoryMessage: "You reached more than 90% market share and became the absolute market leader.",
 		buyAction: "Buy",
 		restockTitle: "Auto restock",
 		restockThresholdLabel: "Restock below",
@@ -443,7 +453,7 @@ let competitors = [];
 
 const gameState = {
 	round: 1,
-	cash: 12000,
+	cash: 60000,
 	rating: 0,
 	reviews: 0,
 	lastSales: 0,
@@ -454,6 +464,7 @@ const gameState = {
 	visibility: 38,
 	companyName: "",
 	inventory: [],
+	productSalesHistory: {},
 	feed: [],
 	customerCounts: [],
 	salesHistory: [],
@@ -489,6 +500,7 @@ const gameState = {
 		productionTab: "employees",
 		selectedLotId: null
 	},
+	victoryAchieved: false,
 	intervals: {
 		roundLoop: null,
 		autosave: null,
@@ -529,6 +541,23 @@ const productionLineRequirements = {
 };
 
 const minimumLotLines = 10;
+const lotBasePrices = {
+	empty: 20000,
+	house: 150000,
+	smallBuilding: 800000,
+	largeBuilding: 800000
+};
+const lotSizeMultipliers = {
+	small: 1,
+	medium: 1.25,
+	large: 1.6
+};
+const lotStructureMultipliers = {
+	empty: 1,
+	house: 1,
+	smallBuilding: 1,
+	largeBuilding: 1.25
+};
 
 const productionCatalog = [
 	{ id: "smart-speaker", name: "Caixa inteligente Aurora", baseQuality: 86 },
@@ -546,10 +575,18 @@ function buildLotCapacity(lines) {
 	};
 }
 
+function calculateLotPrice({ structure, size }) {
+	const base = lotBasePrices[structure] || lotBasePrices.empty;
+	const sizeMultiplier = lotSizeMultipliers[size] || 1;
+	const structureMultiplier = lotStructureMultipliers[structure] || 1;
+	return Math.round(base * sizeMultiplier * structureMultiplier);
+}
+
 function createProductionLot({ lines, ...lot }) {
 	const capacity = buildLotCapacity(lines);
 	return {
 		...lot,
+		price: lot.price ?? calculateLotPrice(lot),
 		...capacity
 	};
 }
@@ -560,7 +597,6 @@ const productionLots = [
 		name: "Quadra Central 12",
 		size: "small",
 		structure: "empty",
-		price: 3200,
 		lines: 10,
 		mapIndex: 1
 	}),
@@ -569,7 +605,6 @@ const productionLots = [
 		name: "Avenida Horizonte",
 		size: "medium",
 		structure: "house",
-		price: 6400,
 		lines: 12,
 		mapIndex: 2
 	}),
@@ -578,7 +613,6 @@ const productionLots = [
 		name: "Distrito Nova Luz",
 		size: "large",
 		structure: "smallBuilding",
-		price: 11800,
 		lines: 16,
 		mapIndex: 3
 	}),
@@ -587,7 +621,6 @@ const productionLots = [
 		name: "Zona Portuária",
 		size: "medium",
 		structure: "empty",
-		price: 5200,
 		lines: 13,
 		mapIndex: 5
 	}),
@@ -596,7 +629,6 @@ const productionLots = [
 		name: "Bairro Jardim Sul",
 		size: "small",
 		structure: "house",
-		price: 4800,
 		lines: 10,
 		mapIndex: 6
 	}),
@@ -605,7 +637,6 @@ const productionLots = [
 		name: "Setor Tecnológico",
 		size: "large",
 		structure: "largeBuilding",
-		price: 18800,
 		lines: 20,
 		mapIndex: 8
 	}),
@@ -614,7 +645,6 @@ const productionLots = [
 		name: "Praça do Lago",
 		size: "medium",
 		structure: "empty",
-		price: 5400,
 		lines: 14,
 		mapIndex: 10
 	}),
@@ -623,7 +653,6 @@ const productionLots = [
 		name: "Boulevard Norte",
 		size: "large",
 		structure: "smallBuilding",
-		price: 13200,
 		lines: 18,
 		mapIndex: 11
 	})
@@ -939,7 +968,7 @@ async function newGame() {
 	}
 	gameState.companyName = name.trim();
 	gameState.round = 1;
-	gameState.cash = 12000;
+	gameState.cash = 60000;
 	gameState.rating = 0;
 	gameState.reviews = 0;
 	gameState.lastSales = 0;
@@ -948,6 +977,7 @@ async function newGame() {
 	gameState.marketShare = [];
 	gameState.visibility = 38;
 	gameState.inventory = [];
+	gameState.productSalesHistory = {};
 	gameState.feed = [];
 	gameState.customerCounts = [];
 	gameState.salesHistory = [];
@@ -972,6 +1002,7 @@ async function newGame() {
 	gameState.currentDate = new Date();
 	gameState.ui.activeTab = "inventory";
 	gameState.ui.productionTab = "employees";
+	gameState.victoryAchieved = false;
 	generateCompetitors();
 	suppliers.forEach((supplier) => {
 		supplier.products.forEach((product) => {
@@ -1047,6 +1078,9 @@ async function loadGame() {
 	if (!parsed.marketShare) {
 		gameState.marketShare = [];
 	}
+	if (!parsed.productSalesHistory) {
+		gameState.productSalesHistory = {};
+	}
 	if (!parsed.gameSpeed) {
 		gameState.gameSpeed = 1;
 	}
@@ -1077,6 +1111,9 @@ async function loadGame() {
 	} else {
 		generateCompetitors();
 	}
+	if (typeof parsed.victoryAchieved !== "boolean") {
+		gameState.victoryAchieved = false;
+	}
 	resetLoops();
 	applySettings();
 	renderGameScreen();
@@ -1102,6 +1139,7 @@ function saveGame({ auto = false } = {}) {
 			visibility: gameState.visibility,
 			companyName: gameState.companyName,
 			inventory: gameState.inventory,
+			productSalesHistory: gameState.productSalesHistory,
 			feed: gameState.feed,
 			settings: gameState.settings,
 			xp: gameState.xp,
@@ -1117,7 +1155,8 @@ function saveGame({ auto = false } = {}) {
 			purchaseQuantities: gameState.purchaseQuantities,
 			loan: gameState.loan,
 			production: gameState.production,
-			ui: gameState.ui
+			ui: gameState.ui,
+			victoryAchieved: gameState.victoryAchieved
 		};
 		const savedAt = new Date().toISOString();
 		const payload = { ...snapshot, savedAt };
@@ -1625,6 +1664,7 @@ function renderProductionTab() {
 						<li><span class="legend-dot smallBuilding"></span>${t("productionMapLegendItems.smallBuilding")}</li>
 						<li><span class="legend-dot largeBuilding"></span>${t("productionMapLegendItems.largeBuilding")}</li>
 						<li><span class="legend-dot owned"></span>${t("productionMapLegendItems.owned")}</li>
+						<li><span class="legend-dot unavailable"></span>${t("productionMapLegendItems.unavailable")}</li>
 					</ul>
 				</div>
 				<div class="lot-popup" id="lotPopup" aria-hidden="true"></div>
@@ -1658,11 +1698,12 @@ function renderLotMapTiles() {
 			return `<div class="map-tile park"><span>🌳</span><small>Parque</small></div>`;
 		}
 		const owned = gameState.production.lotsOwned.includes(lot.id);
-		const structureClass = owned ? "owned" : lot.structure;
+		const canAfford = gameState.cash >= lot.price;
+		const structureClass = owned ? "owned" : (canAfford ? lot.structure : "locked");
 		const icon = getLotIcon(lot.structure);
 		const sizeLabel = t(`productionLotSizes.${lot.size}`);
 		return `
-			<button class="map-tile ${structureClass}" type="button" onclick="selectLot('${lot.id}', event, this)">
+			<button class="map-tile ${structureClass}" type="button" data-lot-id="${lot.id}" onclick="selectLot('${lot.id}', event, this)">
 				<span>${icon}</span>
 				<small>${lot.name}</small>
 				<small class="map-tile-sub">${sizeLabel}</small>
@@ -1692,6 +1733,7 @@ function showLotPopup(lotId, tileElement) {
 	}
 	gameState.ui.selectedLotId = lotId;
 	const owned = gameState.production.lotsOwned.includes(lot.id);
+	const canAfford = gameState.cash >= lot.price;
 	const sizeLabel = t(`productionLotSizes.${lot.size}`);
 	const structureLabel = t(`productionLotStructures.${lot.structure}`);
 	popup.innerHTML = `
@@ -1708,10 +1750,11 @@ function showLotPopup(lotId, tileElement) {
 		</div>
 		<div class="lot-popup-actions">
 			<button class="secondary" onclick="closeLotPopup()">${t("cancelAction")}</button>
-			<button onclick="buyLot('${lot.id}')" ${owned ? "disabled" : ""}>
+			<button onclick="buyLot('${lot.id}')" ${owned || !canAfford ? "disabled" : ""}>
 				${owned ? t("productionOwnedLot") : t("productionBuyLot")}
 			</button>
 		</div>
+		${!owned && !canAfford ? `<small class="status-note">${t("productionLotUnavailable")}</small>` : ""}
 	`;
 	const tileRect = tileElement.getBoundingClientRect();
 	const mapRect = map.getBoundingClientRect();
@@ -1734,6 +1777,32 @@ function closeLotPopup() {
 	popup.setAttribute("aria-hidden", "true");
 	gameState.ui.selectedLotId = null;
 	document.querySelectorAll(".map-tile.selected").forEach((tile) => tile.classList.remove("selected"));
+}
+
+function updateLotMapAvailability() {
+	if (gameState.ui.activeTab !== "production" || gameState.ui.productionTab !== "lots") {
+		return;
+	}
+	const tiles = document.querySelectorAll(".map-tile[data-lot-id]");
+	tiles.forEach((tile) => {
+		const lotId = tile.dataset.lotId;
+		const lot = productionLots.find((entry) => entry.id === lotId);
+		if (!lot) {
+			return;
+		}
+		const owned = gameState.production.lotsOwned.includes(lotId);
+		const canAfford = gameState.cash >= lot.price;
+		tile.classList.remove("empty", "house", "smallBuilding", "largeBuilding", "owned", "locked");
+		const nextClass = owned ? "owned" : (canAfford ? lot.structure : "locked");
+		tile.classList.add(nextClass);
+		tile.setAttribute("aria-disabled", owned || !canAfford ? "true" : "false");
+	});
+	if (gameState.ui.selectedLotId) {
+		const selectedTile = document.querySelector(`.map-tile[data-lot-id="${gameState.ui.selectedLotId}"]`);
+		if (selectedTile) {
+			showLotPopup(gameState.ui.selectedLotId, selectedTile);
+		}
+	}
 }
 
 function renderPlantEmployeeCards() {
@@ -2154,6 +2223,7 @@ function simulateRound() {
 	gameState.lastRefunds = totalRefunds;
 	gameState.lastSoldItems = soldItems;
 	const extraRevenue = applyRecommendedSellerMinimum();
+	recordProductSalesHistory(gameState.lastSoldItems);
 	updateReputation(gameState.lastSoldItems, gameState.lastSales);
 	gameState.round += 1;
 	advanceGameDate();
@@ -2176,6 +2246,21 @@ function simulateRound() {
 
 function checkGameOver() {
 	const totalStock = gameState.inventory.reduce((sum, item) => sum + item.stock, 0);
+	const marketShare = gameState.marketShare.find((entry) => entry.type === "player")?.value || 0;
+	if (marketShare >= 0.9 && !gameState.victoryAchieved) {
+		gameState.victoryAchieved = true;
+		resetLoops();
+		gameState.paused = true;
+		showMessageModal({
+			title: t("victoryTitle"),
+			message: t("victoryMessage"),
+			confirmLabel: t("confirmAction"),
+			onConfirm: () => {
+				renderMainMenu();
+			}
+		});
+		return;
+	}
 	if (gameState.cash <= -500000 && totalStock === 0) {
 		resetLoops();
 		gameState.paused = true;
@@ -2190,20 +2275,25 @@ function checkGameOver() {
 	}
 }
 
+function getSeasonalFactor() {
+	const cycle = (gameState.round % 30) / 30;
+	return Math.sin(cycle * Math.PI * 2);
+}
+
 function calculateDemand(item) {
 	const visibilityFactor = 0.6 + gameState.visibility / 140;
 	const priceScore = Math.max(0.4, 1.3 - item.sellPrice / 120);
 	const qualityScore = item.quality / 100;
-	const randomness = randomBetween(0.8, 1.2);
+	const seasonal = 1 + getSeasonalFactor() * 0.08;
 	const baseDemand = Math.floor(getCustomerPoolSize() * 0.2);
 	const campaignMultiplier = isCampaignBoostActive() ? 3 : 1;
-	return Math.max(0, Math.round(baseDemand * visibilityFactor * priceScore * (0.6 + qualityScore) * randomness * campaignMultiplier));
+	return Math.max(0, Math.round(baseDemand * visibilityFactor * priceScore * (0.6 + qualityScore) * seasonal * campaignMultiplier));
 }
 
 function calculateRefundRate(quality) {
 	const qualityFactor = 1 - quality / 100;
 	const packaging = packagingOptions[gameState.packaging];
-	const base = 0.04 + qualityFactor * 0.12 + randomBetween(0, 0.03);
+	const base = 0.04 + qualityFactor * 0.12 + Math.max(0, getSeasonalFactor() * 0.015);
 	return Math.min(0.4, Math.max(0, base + packaging.refundDelta));
 }
 
@@ -2213,7 +2303,7 @@ function updateReputation(soldItems, totalSales) {
 	}
 	const avgQuality = soldItems.reduce((sum, item) => sum + item.quality, 0) / soldItems.length;
 	const newReviews = Math.round(totalSales * 0.14);
-	const sentiment = 2.4 + (avgQuality / 100) * 2 + randomBetween(-0.2, 0.2);
+	const sentiment = 2.4 + (avgQuality / 100) * 2 + getSeasonalFactor() * 0.15;
 	const newRating = Math.max(1.5, Math.min(5, sentiment));
 	if (gameState.reviews === 0) {
 		gameState.rating = newRating;
@@ -2286,7 +2376,7 @@ function smoothMarketShares(nextShares) {
 		}
 		const diff = share.value - previous;
 		const direction = diff >= 0 ? 1 : -1;
-		const step = Math.min(Math.abs(diff), 0.03);
+		const step = Math.min(Math.abs(diff), 0.02);
 		const nextValue = clamp(previous + direction * step, 0, 1);
 		return { ...share, value: nextValue };
 	});
@@ -2298,7 +2388,7 @@ function smoothMarketShares(nextShares) {
 }
 
 function getCustomerPoolSize() {
-	const base = 24000 + randomBetween(-2000, 2000);
+	const base = 24000 + getSeasonalFactor() * 1800;
 	const visibilityBoost = gameState.visibility * 120;
 	const campaignMultiplier = isCampaignBoostActive() ? 3 : 1;
 	return Math.round(clamp((base + visibilityBoost) * campaignMultiplier, 18000, 65000));
@@ -2346,6 +2436,42 @@ function renderMarketShare() {
 	}).join("");
 }
 
+function getInventoryChartSnapshot(productId, fallbackStock) {
+	const history = gameState.productSalesHistory?.[productId] || [];
+	if (!history.length) {
+		return { stock: fallbackStock, sold: 0 };
+	}
+	return history[0];
+}
+
+function getInventoryChartMetrics(productId, fallbackStock) {
+	const history = gameState.productSalesHistory?.[productId] || [];
+	const snapshot = getInventoryChartSnapshot(productId, fallbackStock);
+	const values = history.flatMap((entry) => [entry.stock, entry.sold]);
+	values.push(snapshot.stock, snapshot.sold);
+	const minValue = Math.min(...values, 0);
+	const maxValue = Math.max(...values, 1);
+	const range = Math.max(1, maxValue - minValue);
+	const stockHeight = Math.round(clamp(((snapshot.stock - minValue) / range) * 100, 0, 100));
+	const soldHeight = Math.round(clamp(((snapshot.sold - minValue) / range) * 100, 0, 100));
+	return {
+		stockHeight,
+		soldHeight,
+		stockValue: snapshot.stock,
+		soldValue: snapshot.sold
+	};
+}
+
+function renderInventoryMiniChart(item) {
+	const metrics = getInventoryChartMetrics(item.productId, item.stock);
+	return `
+		<div class="inventory-mini-chart" data-inventory-chart="${item.productId}" aria-label="${t("inventoryMiniChartLabel")}" title="${t("stockLabel")}: ${metrics.stockValue} · ${t("lastSalesLabel")}: ${metrics.soldValue}">
+			<span class="mini-bar stock" style="height: ${metrics.stockHeight}%;"></span>
+			<span class="mini-bar sales" style="height: ${metrics.soldHeight}%;"></span>
+		</div>
+	`;
+}
+
 function renderInventory() {
 	const inventoryList = document.getElementById("inventoryList");
 	if (!inventoryList) {
@@ -2358,8 +2484,13 @@ function renderInventory() {
 	const autoRestockUnlocked = gameState.skills.autoRestock;
 	inventoryList.innerHTML = gameState.inventory.map((item) => `
 		<div class="inventory-card">
-			<strong>${item.name}</strong>
-			<small>${item.supplier}</small>
+			<div class="inventory-header">
+				<div>
+					<strong>${item.name}</strong>
+					<small>${item.supplier}</small>
+				</div>
+				${renderInventoryMiniChart(item)}
+			</div>
 			<small data-inventory-stats="${item.productId}">${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: ${formatCurrency(item.cost)}</small>
 			<div class="inventory-actions stacked">
 				<div class="inventory-field">
@@ -2432,6 +2563,7 @@ function updateStats() {
 	if (xpStat) {
 		xpStat.textContent = gameState.xp;
 	}
+	updateLotMapAvailability();
 }
 
 function updateSuppliers() {
@@ -2525,6 +2657,16 @@ function updateInventoryStats() {
 		const stats = document.querySelector(`[data-inventory-stats="${item.productId}"]`);
 		if (stats) {
 			stats.textContent = `${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: ${formatCurrency(item.cost)}`;
+		}
+		const chart = document.querySelector(`[data-inventory-chart="${item.productId}"]`);
+		if (chart) {
+			const metrics = getInventoryChartMetrics(item.productId, item.stock);
+			const bars = chart.querySelectorAll(".mini-bar");
+			if (bars.length >= 2) {
+				bars[0].style.height = `${metrics.stockHeight}%`;
+				bars[1].style.height = `${metrics.soldHeight}%`;
+			}
+			chart.setAttribute("title", `${t("stockLabel")}: ${metrics.stockValue} · ${t("lastSalesLabel")}: ${metrics.soldValue}`);
 		}
 	});
 }
@@ -2977,6 +3119,19 @@ function updateSpeedControls() {
 function trackSalesHistory(totalRevenue) {
 	gameState.salesHistory.unshift(totalRevenue);
 	gameState.salesHistory = gameState.salesHistory.slice(0, 10);
+}
+
+function recordProductSalesHistory(soldItems) {
+	const soldMap = new Map(soldItems.map((item) => [item.productId, item.sold]));
+	gameState.inventory.forEach((item) => {
+		const history = gameState.productSalesHistory?.[item.productId] || [];
+		const snapshot = {
+			stock: item.stock,
+			sold: soldMap.get(item.productId) || 0
+		};
+		history.unshift(snapshot);
+		gameState.productSalesHistory[item.productId] = history.slice(0, 12);
+	});
 }
 
 function applyRecommendedSellerMinimum() {
