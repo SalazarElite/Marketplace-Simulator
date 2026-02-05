@@ -3337,6 +3337,14 @@ function getSaveIndex() {
 	}
 }
 
-loadSettings();
-applySettings();
-renderMainMenu();
+function initializeInterface() {
+	loadSettings();
+	applySettings();
+	renderMainMenu();
+}
+
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", initializeInterface);
+} else {
+	initializeInterface();
+}
