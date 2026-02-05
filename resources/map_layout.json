@@ -2,9 +2,9 @@
   "background": "resources/background.png",
   "lotPurchaseCost": 15000,
   "grid": {
-    "columns": 4,
-    "rows": 3,
-    "cellGap": 14
+    "columns": 7,
+    "rows": 5,
+    "cellGap": 12
   },
   "playerBuildingLevels": [
     {
@@ -30,27 +30,27 @@
     }
   ],
   "lots": [
-    { "id": "lot-01", "name": "Lote A1", "image": "resources/empty_lot.png", "row": 1, "col": 1, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-02", "name": "Lote A2", "image": "resources/empty_lot.png", "row": 1, "col": 2, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-03", "name": "Lote A3", "image": "resources/empty_lot.png", "row": 1, "col": 3, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-04", "name": "Lote A4", "image": "resources/empty_lot.png", "row": 1, "col": 4, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-05", "name": "Lote B1", "image": "resources/empty_lot.png", "row": 2, "col": 1, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-06", "name": "Lote B2", "image": "resources/empty_lot.png", "row": 2, "col": 2, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-07", "name": "Lote B3", "image": "resources/empty_lot.png", "row": 2, "col": 3, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-08", "name": "Lote B4", "image": "resources/empty_lot.png", "row": 2, "col": 4, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-09", "name": "Lote C1", "image": "resources/empty_lot.png", "row": 3, "col": 1, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-10", "name": "Lote C2", "image": "resources/empty_lot.png", "row": 3, "col": 2, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-11", "name": "Lote C3", "image": "resources/empty_lot.png", "row": 3, "col": 3, "rowSpan": 1, "colSpan": 1, "purchasable": true },
-    { "id": "lot-12", "name": "Lote C4", "image": "resources/empty_lot.png", "row": 3, "col": 4, "rowSpan": 1, "colSpan": 1, "purchasable": true }
+    { "id": "lot-01", "name": "Lote A1", "image": "resources/empty_lot.png", "row": 1, "col": 1, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-02", "name": "Lote A2", "image": "resources/empty_lot.png", "row": 1, "col": 2, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-03", "name": "Lote A3", "image": "resources/empty_lot.png", "row": 1, "col": 3, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-04", "name": "Lote A4", "image": "resources/empty_lot.png", "row": 1, "col": 4, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-05", "name": "Lote A5", "image": "resources/empty_lot.png", "row": 1, "col": 5, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-06", "name": "Lote A6", "image": "resources/empty_lot.png", "row": 1, "col": 6, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-07", "name": "Lote B1", "image": "resources/empty_lot.png", "row": 3, "col": 2, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-08", "name": "Lote B2", "image": "resources/empty_lot.png", "row": 3, "col": 3, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-09", "name": "Lote B3", "image": "resources/empty_lot.png", "row": 3, "col": 4, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-10", "name": "Lote B4", "image": "resources/empty_lot.png", "row": 3, "col": 5, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-11", "name": "Lote B5", "image": "resources/empty_lot.png", "row": 3, "col": 6, "width": 1, "height": 2, "purchasable": true },
+    { "id": "lot-12", "name": "Lote B6", "image": "resources/empty_lot.png", "row": 3, "col": 7, "width": 1, "height": 2, "purchasable": true }
   ],
   "decorations": [
-    { "id": "decor-01", "name": "Casa", "image": "resources/map_assets/house_1.png", "x": 7, "y": 10, "width": 10, "height": 14, "purchasable": false },
-    { "id": "decor-02", "name": "Casa", "image": "resources/map_assets/house_2.png", "x": 34, "y": 10, "width": 10, "height": 14, "purchasable": false },
-    { "id": "decor-03", "name": "Casa", "image": "resources/map_assets/house_3.png", "x": 83, "y": 10, "width": 10, "height": 14, "purchasable": false },
-    { "id": "decor-04", "name": "Parque", "image": "resources/map_assets/park_1.png", "x": 8, "y": 82, "width": 13, "height": 14, "purchasable": false },
-    { "id": "decor-05", "name": "Parque", "image": "resources/map_assets/park_2.png", "x": 42, "y": 82, "width": 13, "height": 14, "purchasable": false },
-    { "id": "decor-06", "name": "Parque", "image": "resources/map_assets/park_3.png", "x": 75, "y": 82, "width": 13, "height": 14, "purchasable": false },
-    { "id": "decor-07", "name": "Skyline", "image": "resources/map_assets/skyscraper_1.png", "x": 50, "y": 4, "width": 12, "height": 18, "purchasable": false },
-    { "id": "decor-08", "name": "Skyline", "image": "resources/map_assets/skyscraper_2.png", "x": 73, "y": 4, "width": 12, "height": 18, "purchasable": false }
+    { "id": "decor-01", "name": "Casa", "image": "resources/map_assets/house_1.png", "row": 1, "col": 7, "width": 1, "height": 1, "purchasable": false },
+    { "id": "decor-02", "name": "Casa", "image": "resources/map_assets/house_2.png", "row": 2, "col": 7, "width": 1, "height": 1, "purchasable": false },
+    { "id": "decor-03", "name": "Casa", "image": "resources/map_assets/house_3.png", "row": 3, "col": 1, "width": 1, "height": 1, "purchasable": false },
+    { "id": "decor-04", "name": "Parque", "image": "resources/map_assets/park_1.png", "row": 4, "col": 1, "width": 1, "height": 1, "purchasable": false },
+    { "id": "decor-05", "name": "Parque", "image": "resources/map_assets/park_2.png", "row": 5, "col": 1, "width": 2, "height": 1, "purchasable": false },
+    { "id": "decor-06", "name": "Parque", "image": "resources/map_assets/park_3.png", "row": 5, "col": 3, "width": 2, "height": 1, "purchasable": false },
+    { "id": "decor-07", "name": "Skyline", "image": "resources/map_assets/skyscraper_1.png", "row": 5, "col": 5, "width": 1, "height": 1, "purchasable": false },
+    { "id": "decor-08", "name": "Skyline", "image": "resources/map_assets/skyscraper_2.png", "row": 5, "col": 6, "width": 2, "height": 1, "purchasable": false }
   ]
 }

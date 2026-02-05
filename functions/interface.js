@@ -1594,8 +1594,8 @@ function renderProductionTab() {
 			<p class="status-note">${t("productionLotsHint")}</p>
 			<div class="city-map">
 				<div class="map-viewport map-viewport--image" style="background-image:url('${mapLayout.background}')">
-					${renderMapDecorations()}
-					<div class="map-lot-grid" style="--map-grid-columns:${Math.max(1, Number(mapGrid.columns) || 4)}; --map-grid-rows:${Math.max(1, Number(mapGrid.rows) || 3)}; --map-grid-gap:${Math.max(4, Number(mapGrid.cellGap) || 12)}px;">
+					<div class="map-lot-grid" style="--map-grid-columns:${Math.max(1, Number(mapGrid.columns) || 7)}; --map-grid-rows:${Math.max(1, Number(mapGrid.rows) || 5)}; --map-grid-gap:${Math.max(4, Number(mapGrid.cellGap) || 12)}px;">
+						${renderMapDecorations()}
 						${renderLotMapTiles()}
 					</div>
 				</div>
@@ -1630,9 +1630,18 @@ function renderProductionTab() {
 }
 
 function renderMapDecorations() {
-	return (mapLayout.decorations || []).map((item) => `
-		<img class="map-decoration" src="${item.image}" alt="${item.name}" style="left:${item.x}%; top:${item.y}%; width:${item.width}%; height:${item.height}%;" />
-	`).join("");
+	return (mapLayout.decorations || []).map((item) => {
+		const hasGridPlacement = Number(item.row) > 0 && Number(item.col) > 0;
+		const width = Math.max(1, Number(item.width ?? item.colSpan) || 1);
+		const height = Math.max(1, Number(item.height ?? item.rowSpan) || 1);
+		const placementStyle = hasGridPlacement
+			? `grid-column:${Number(item.col)} / span ${width}; grid-row:${Number(item.row)} / span ${height};`
+			: `left:${item.x}%; top:${item.y}%; width:${item.width}%; height:${item.height}%;`;
+		const className = hasGridPlacement ? "map-decoration map-decoration--grid" : "map-decoration";
+		return `
+			<img class="${className}" src="${item.image}" alt="${item.name}" style="${placementStyle}" />
+		`;
+	}).join("");
 }
 
 function renderLotMapTiles() {
@@ -1645,8 +1654,10 @@ function renderLotMapTiles() {
 		const lotImage = levelData?.image || lot.image;
 		const stateClass = owned ? "owned" : (canAfford ? "empty" : "locked");
 		const hasGridPlacement = Number(lot.row) > 0 && Number(lot.col) > 0;
+		const width = Math.max(1, Number(lot.width ?? lot.colSpan) || 1);
+		const height = Math.max(1, Number(lot.height ?? lot.rowSpan) || 1);
 		const placementStyle = hasGridPlacement
-			? `grid-column:${Number(lot.col)} / span ${Math.max(1, Number(lot.colSpan) || 1)}; grid-row:${Number(lot.row)} / span ${Math.max(1, Number(lot.rowSpan) || 1)};`
+			? `grid-column:${Number(lot.col)} / span ${width}; grid-row:${Number(lot.row)} / span ${height};`
 			: `left:${lot.x}%; top:${lot.y}%; width:${lot.width}%; height:${lot.height}%;`;
 		return `
 			<button class="map-lot ${stateClass} ${selected ? "selected" : ""} ${hasGridPlacement ? "" : "map-lot--absolute"}" type="button" data-lot-id="${lot.id}" onclick="selectLot('${lot.id}', event)" style="${placementStyle}">
