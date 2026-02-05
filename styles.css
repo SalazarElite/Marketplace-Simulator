@@ -517,7 +517,7 @@ input[type="number"] {
 	padding: 20px;
 	overflow: hidden;
 	position: relative;
-	min-height: 480px;
+	min-height: 620px;
 }
 
 .map-viewport--image {
@@ -549,6 +549,16 @@ input[type="number"] {
 	z-index: 2;
 }
 
+<<<<<<< codex/update-empty_lot-image-and-map-layout-glwl7l
+.map-lot:not(.map-lot--absolute) {
+	width: 76%;
+	height: 76%;
+	justify-self: center;
+	align-self: center;
+}
+
+=======
+>>>>>>> main
 .map-lot--absolute {
 	position: absolute;
 }
