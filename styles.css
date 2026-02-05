@@ -143,8 +143,7 @@ input[type="number"] {
 
 .game-layout {
 	display: grid;
-	grid-template-columns: 360px 1fr;
-	grid-template-columns: 320px 1fr;
+	grid-template-columns: 340px 1fr;
 	gap: 24px;
 }
 
@@ -218,6 +217,40 @@ input[type="number"] {
 	padding: 12px;
 	display: grid;
 	gap: 8px;
+}
+
+.inventory-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.inventory-mini-chart {
+	display: flex;
+	align-items: flex-end;
+	gap: 6px;
+	width: 42px;
+	height: 36px;
+	padding: 4px 6px;
+	border-radius: 10px;
+	background: #ffffff;
+	border: 1px solid #e1e7f5;
+	box-shadow: inset 0 1px 4px rgba(12, 22, 45, 0.06);
+}
+
+.mini-bar {
+	width: 10px;
+	border-radius: 6px 6px 4px 4px;
+	min-height: 4px;
+}
+
+.mini-bar.stock {
+	background: linear-gradient(180deg, #2b64f6, #6aa6ff);
+}
+
+.mini-bar.sales {
+	background: linear-gradient(180deg, #22c4a6, #7ee6d6);
 }
 
 .inventory-card small {
@@ -445,36 +478,50 @@ input[type="number"] {
 }
 
 .map-viewport {
-	background: #f7f9fe;
+	background: linear-gradient(145deg, #f7fbff, #eef4ff);
 	border-radius: 16px;
 	border: 1px solid #e3e9f5;
 	padding: 20px;
 	overflow: hidden;
+	position: relative;
+}
+
+.map-viewport::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background-image: linear-gradient(0deg, rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(255, 255, 255, 0.35) 1px, transparent 1px);
+	background-size: 32px 32px;
+	opacity: 0.7;
+	pointer-events: none;
 }
 
 .map-grid {
 	display: grid;
-	grid-template-columns: repeat(4, 92px);
-	grid-auto-rows: 92px;
+	grid-template-columns: repeat(4, 104px);
+	grid-auto-rows: 104px;
 	gap: 12px;
 	justify-content: center;
 	transform: rotate(45deg) scaleY(0.82);
 	transform-origin: top center;
+	position: relative;
+	z-index: 1;
 }
 
 .map-tile {
-	background: #e9f1ff;
-	border-radius: 14px;
-	padding: 8px;
+	background: linear-gradient(145deg, #fefefe, #e4edff);
+	border-radius: 16px;
+	padding: 10px;
 	display: grid;
 	gap: 6px;
 	place-items: center;
-	min-height: 88px;
+	min-height: 98px;
 	text-align: center;
 	font-size: 12px;
 	color: #3b4254;
-	border: 1px solid #d8e3ff;
-	box-shadow: none;
+	border: 1px solid rgba(195, 208, 236, 0.9);
+	box-shadow: 0 10px 18px rgba(25, 39, 68, 0.12);
 	transform: rotate(-45deg) scaleY(1.22);
 	cursor: pointer;
 	transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -483,6 +530,10 @@ input[type="number"] {
 .map-tile:hover {
 	transform: rotate(-45deg) scaleY(1.22);
 	box-shadow: 0 8px 18px rgba(32, 48, 88, 0.12);
+}
+
+.map-tile.locked:hover {
+	box-shadow: none;
 }
 
 .map-tile span {
@@ -503,23 +554,30 @@ input[type="number"] {
 }
 
 .map-tile.house {
-	background: #fff6e3;
+	background: linear-gradient(145deg, #fff6e3, #f6ddb5);
 	border-color: #f3deb5;
 }
 
 .map-tile.smallBuilding {
-	background: #eef3ff;
+	background: linear-gradient(145deg, #eef3ff, #d7e0f8);
 	border-color: #d7e0f8;
 }
 
 .map-tile.largeBuilding {
-	background: #f1f5ff;
+	background: linear-gradient(145deg, #f1f5ff, #cdd9ff);
 	border-color: #cdd9ff;
 }
 
 .map-tile.owned {
-	background: #e0f7f0;
+	background: linear-gradient(145deg, #e0f7f0, #bceedd);
 	border-color: #a8e5d4;
+}
+
+.map-tile.locked {
+	background: linear-gradient(145deg, #f0f2f7, #d9dce6);
+	border-color: #c7cbd8;
+	color: #7b8394;
+	box-shadow: none;
 }
 
 .map-tile.park {
@@ -580,6 +638,11 @@ input[type="number"] {
 .legend-dot.owned {
 	background: #e0f7f0;
 	border: 1px solid #a8e5d4;
+}
+
+.legend-dot.unavailable {
+	background: #e0e3ea;
+	border: 1px solid #c7cbd8;
 }
 
 .lot-popup {
