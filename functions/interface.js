@@ -486,7 +486,8 @@ const gameState = {
 		currentScreen: "menu",
 		previousScreen: "menu",
 		activeTab: "inventory",
-		productionTab: "employees"
+		productionTab: "employees",
+		selectedLotId: null
 	},
 	intervals: {
 		roundLoop: null,
@@ -522,6 +523,13 @@ const productionRoles = [
 	{ key: "qa", salary: 560 }
 ];
 
+const productionLineRequirements = {
+	machines: 3,
+	employees: 4
+};
+
+const minimumLotLines = 10;
+
 const productionCatalog = [
 	{ id: "smart-speaker", name: "Caixa inteligente Aurora", baseQuality: 86 },
 	{ id: "smartwatch", name: "Relógio Pulse X", baseQuality: 82 },
@@ -529,87 +537,96 @@ const productionCatalog = [
 	{ id: "hub", name: "Central Domus IoT", baseQuality: 84 }
 ];
 
+function buildLotCapacity(lines) {
+	const totalLines = Math.max(lines, minimumLotLines);
+	return {
+		lines: totalLines,
+		maxEmployees: totalLines * productionLineRequirements.employees,
+		maxMachines: totalLines * productionLineRequirements.machines
+	};
+}
+
+function createProductionLot({ lines, ...lot }) {
+	const capacity = buildLotCapacity(lines);
+	return {
+		...lot,
+		...capacity
+	};
+}
+
 const productionLots = [
-	{
+	createProductionLot({
 		id: "lot-01",
 		name: "Quadra Central 12",
 		size: "small",
 		structure: "empty",
 		price: 3200,
-		maxEmployees: 6,
-		maxMachines: 4,
+		lines: 10,
 		mapIndex: 1
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-02",
 		name: "Avenida Horizonte",
 		size: "medium",
 		structure: "house",
 		price: 6400,
-		maxEmployees: 10,
-		maxMachines: 7,
+		lines: 12,
 		mapIndex: 2
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-03",
 		name: "Distrito Nova Luz",
 		size: "large",
 		structure: "smallBuilding",
 		price: 11800,
-		maxEmployees: 16,
-		maxMachines: 12,
+		lines: 16,
 		mapIndex: 3
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-04",
 		name: "Zona Portuária",
 		size: "medium",
 		structure: "empty",
 		price: 5200,
-		maxEmployees: 9,
-		maxMachines: 7,
+		lines: 13,
 		mapIndex: 5
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-05",
 		name: "Bairro Jardim Sul",
 		size: "small",
 		structure: "house",
 		price: 4800,
-		maxEmployees: 7,
-		maxMachines: 5,
+		lines: 10,
 		mapIndex: 6
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-06",
 		name: "Setor Tecnológico",
 		size: "large",
 		structure: "largeBuilding",
 		price: 18800,
-		maxEmployees: 22,
-		maxMachines: 16,
+		lines: 20,
 		mapIndex: 8
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-07",
 		name: "Praça do Lago",
 		size: "medium",
 		structure: "empty",
 		price: 5400,
-		maxEmployees: 10,
-		maxMachines: 8,
+		lines: 14,
 		mapIndex: 10
-	},
-	{
+	}),
+	createProductionLot({
 		id: "lot-08",
 		name: "Boulevard Norte",
 		size: "large",
 		structure: "smallBuilding",
 		price: 13200,
-		maxEmployees: 18,
-		maxMachines: 13,
+		lines: 18,
 		mapIndex: 11
-	}
+	})
 ];
 
 const machineryCatalog = [
@@ -1564,6 +1581,9 @@ function renderProductionSubtabs() {
 
 function setProductionTab(tabId) {
 	gameState.ui.productionTab = tabId;
+	if (tabId !== "lots") {
+		closeLotPopup();
+	}
 	renderTabContent();
 }
 
@@ -1591,9 +1611,11 @@ function renderProductionTab() {
 		container.innerHTML = `
 			<h3 class="panel-title">${t("productionLotsTitle")}</h3>
 			<p class="status-note">${t("productionLotsHint")}</p>
-			<div class="city-map">
-				<div class="map-grid">
-					${renderLotMapTiles()}
+			<div class="city-map" onclick="closeLotPopup()">
+				<div class="map-viewport">
+					<div class="map-grid">
+						${renderLotMapTiles()}
+					</div>
 				</div>
 				<div class="map-legend">
 					<strong>${t("productionMapLegend")}</strong>
@@ -1605,9 +1627,7 @@ function renderProductionTab() {
 						<li><span class="legend-dot owned"></span>${t("productionMapLegendItems.owned")}</li>
 					</ul>
 				</div>
-			</div>
-			<div class="plant-grid">
-				${renderLotCards()}
+				<div class="lot-popup" id="lotPopup" aria-hidden="true"></div>
 			</div>
 		`;
 		return;
@@ -1640,40 +1660,80 @@ function renderLotMapTiles() {
 		const owned = gameState.production.lotsOwned.includes(lot.id);
 		const structureClass = owned ? "owned" : lot.structure;
 		const icon = getLotIcon(lot.structure);
+		const sizeLabel = t(`productionLotSizes.${lot.size}`);
 		return `
-			<div class="map-tile ${structureClass}">
+			<button class="map-tile ${structureClass}" type="button" onclick="selectLot('${lot.id}', event, this)">
 				<span>${icon}</span>
 				<small>${lot.name}</small>
-			</div>
+				<small class="map-tile-sub">${sizeLabel}</small>
+			</button>
 		`;
 	});
 	return tiles.join("");
 }
 
-function renderLotCards() {
-	return productionLots.map((lot) => {
-		const owned = gameState.production.lotsOwned.includes(lot.id);
-		const sizeLabel = t(`productionLotSizes.${lot.size}`);
-		const structureLabel = t(`productionLotStructures.${lot.structure}`);
-		return `
-			<div class="plant-card ${owned ? "owned" : ""}">
-				<div class="plant-header">
-					<div>
-						<strong>${lot.name}</strong>
-						<small>${sizeLabel} · ${structureLabel}</small>
-					</div>
-					<span class="plant-icon">${getLotIcon(lot.structure)}</span>
-				</div>
-				<div class="plant-meta">
-					<span>${t("productionLotCapacity")}: ${lot.maxEmployees} ${t("productionEmployeesLabel").toLowerCase()}, ${lot.maxMachines} ${t("productionMachinesLabel").toLowerCase()}</span>
-					<span>${t("costLabel")}: ${formatCurrency(lot.price)}</span>
-				</div>
-				<button class="secondary" onclick="buyLot('${lot.id}')" ${owned ? "disabled" : ""}>
-					${owned ? t("productionOwnedLot") : t("productionBuyLot")}
-				</button>
+function selectLot(lotId, event, tileElement) {
+	if (event) {
+		event.stopPropagation();
+	}
+	showLotPopup(lotId, tileElement);
+}
+
+function showLotPopup(lotId, tileElement) {
+	const lot = productionLots.find((entry) => entry.id === lotId);
+	const popup = document.getElementById("lotPopup");
+	const map = document.querySelector(".city-map");
+	if (!lot || !popup || !map || !tileElement) {
+		return;
+	}
+	if (gameState.ui.selectedLotId === lotId && popup.classList.contains("visible")) {
+		closeLotPopup();
+		return;
+	}
+	gameState.ui.selectedLotId = lotId;
+	const owned = gameState.production.lotsOwned.includes(lot.id);
+	const sizeLabel = t(`productionLotSizes.${lot.size}`);
+	const structureLabel = t(`productionLotStructures.${lot.structure}`);
+	popup.innerHTML = `
+		<div class="lot-popup-header">
+			<div>
+				<strong>${lot.name}</strong>
+				<small>${sizeLabel} · ${structureLabel}</small>
 			</div>
-		`;
-	}).join("");
+			<span class="plant-icon">${getLotIcon(lot.structure)}</span>
+		</div>
+		<div class="lot-popup-meta">
+			<span>${t("productionLotCapacity")}: ${lot.maxEmployees} ${t("productionEmployeesLabel").toLowerCase()}, ${lot.maxMachines} ${t("productionMachinesLabel").toLowerCase()}</span>
+			<span>${t("costLabel")}: ${formatCurrency(lot.price)}</span>
+		</div>
+		<div class="lot-popup-actions">
+			<button class="secondary" onclick="closeLotPopup()">${t("cancelAction")}</button>
+			<button onclick="buyLot('${lot.id}')" ${owned ? "disabled" : ""}>
+				${owned ? t("productionOwnedLot") : t("productionBuyLot")}
+			</button>
+		</div>
+	`;
+	const tileRect = tileElement.getBoundingClientRect();
+	const mapRect = map.getBoundingClientRect();
+	const left = tileRect.left - mapRect.left + tileRect.width / 2;
+	const top = tileRect.top - mapRect.top;
+	popup.style.left = `${left}px`;
+	popup.style.top = `${top}px`;
+	popup.classList.add("visible");
+	popup.setAttribute("aria-hidden", "false");
+	document.querySelectorAll(".map-tile.selected").forEach((tile) => tile.classList.remove("selected"));
+	tileElement.classList.add("selected");
+}
+
+function closeLotPopup() {
+	const popup = document.getElementById("lotPopup");
+	if (!popup) {
+		return;
+	}
+	popup.classList.remove("visible");
+	popup.setAttribute("aria-hidden", "true");
+	gameState.ui.selectedLotId = null;
+	document.querySelectorAll(".map-tile.selected").forEach((tile) => tile.classList.remove("selected"));
 }
 
 function renderPlantEmployeeCards() {
