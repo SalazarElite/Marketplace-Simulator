@@ -11,9 +11,11 @@ const translations = {
 	pt: {
 		optionsTitle: "Opções",
 		creditsTitle: "Créditos",
-		backToMenu: "Voltar para o menu",
+		backToMenu: "Voltar",
 		loadGame: "Carregar Jogo",
 		newGame: "Novo Jogo",
+		saveGame: "Salvar Jogo",
+		mainMenuAction: "Menu Principal",
 		mainMenuTitle: "Menu principal",
 		mainMenuSubtitle: "Comece uma nova simulação e veja como suas escolhas impactam o market share.",
 		companyPrompt: "Nome da empresa:",
@@ -35,8 +37,20 @@ const translations = {
 			suppliers: "Fornecedores",
 			market: "Market share",
 			skills: "Habilidades",
-			marketing: "Marketing"
+			marketing: "Marketing",
+			bank: "Banco"
 		},
+		bankTitle: "Banco",
+		bankHint: "Escolha um empréstimo para aumentar seu caixa agora e pagar ao longo dos dias.",
+		bankActiveLoan: "Empréstimo ativo",
+		bankInstallmentsLeft: "Parcelas restantes",
+		bankInstallmentValue: "Valor da parcela",
+		bankNextPayment: "Dias para próxima parcela",
+		bankTakeLoan: "Pegar empréstimo",
+		bankLoanAmount: "Valor liberado",
+		bankLoanTotal: "Total com juros",
+		bankLoanInterest: "Juros",
+		bankLoanInstallments: "Parcelas",
 		marketingTitle: "Marketing",
 		marketingHint: "Ações de marketing aumentam visibilidade e impactam as vendas.",
 		marketingCostLabel: "Custo",
@@ -69,7 +83,8 @@ const translations = {
 		optionsAutosaveHint: "O jogo salva automaticamente no intervalo definido.",
 		creditsText: "Simulação criada para testar sua estratégia de marketplace.",
 		loadMissing: "Nenhum save encontrado para este nome.",
-		saveSuccess: "Jogo salvo com sucesso.",
+		saveSuccess: "Jogo Salvo com Sucesso",
+		saveAuto: "Jogo salvo automaticamente.",
 		saveFail: "Não foi possível salvar.",
 		buyAction: "Comprar",
 		restockTitle: "Recompra automática",
@@ -83,6 +98,8 @@ const translations = {
 		restockLocked: "Desbloqueie a habilidade para ativar a recompra automática.",
 		loadTitle: "Selecionar save",
 		loadEmpty: "Nenhum save encontrado.",
+		insufficientFundsTitle: "Saldo Insuficiente",
+		insufficientFundsMessage: "Você não tem dinheiro o bastante para esta ação.",
 		marketingActions: {
 			social: "Campanha social",
 			influencer: "Parceria com influencer",
@@ -99,9 +116,11 @@ const translations = {
 	en: {
 		optionsTitle: "Options",
 		creditsTitle: "Credits",
-		backToMenu: "Back to menu",
+		backToMenu: "Back",
 		loadGame: "Load Game",
 		newGame: "New Game",
+		saveGame: "Save Game",
+		mainMenuAction: "Main Menu",
 		mainMenuTitle: "Main menu",
 		mainMenuSubtitle: "Start a new simulation and see how your choices affect market share.",
 		companyPrompt: "Company name:",
@@ -123,8 +142,20 @@ const translations = {
 			suppliers: "Suppliers",
 			market: "Market share",
 			skills: "Skills",
-			marketing: "Marketing"
+			marketing: "Marketing",
+			bank: "Bank"
 		},
+		bankTitle: "Bank",
+		bankHint: "Choose a loan to boost your cash now and repay over days.",
+		bankActiveLoan: "Active loan",
+		bankInstallmentsLeft: "Installments left",
+		bankInstallmentValue: "Installment value",
+		bankNextPayment: "Days until next installment",
+		bankTakeLoan: "Take loan",
+		bankLoanAmount: "Amount released",
+		bankLoanTotal: "Total with interest",
+		bankLoanInterest: "Interest",
+		bankLoanInstallments: "Installments",
 		marketingTitle: "Marketing",
 		marketingHint: "Marketing actions increase visibility and influence sales.",
 		marketingCostLabel: "Cost",
@@ -158,6 +189,7 @@ const translations = {
 		creditsText: "Simulation created to test your marketplace strategy.",
 		loadMissing: "No save found for this name.",
 		saveSuccess: "Game saved successfully.",
+		saveAuto: "Game saved automatically.",
 		saveFail: "Unable to save.",
 		buyAction: "Buy",
 		restockTitle: "Auto restock",
@@ -171,6 +203,8 @@ const translations = {
 		restockLocked: "Unlock the skill to enable auto restock.",
 		loadTitle: "Select save",
 		loadEmpty: "No save found.",
+		insufficientFundsTitle: "Insufficient Balance",
+		insufficientFundsMessage: "You don't have enough money for this action.",
 		marketingActions: {
 			social: "Social campaign",
 			influencer: "Influencer partnership",
@@ -269,6 +303,8 @@ const gameState = {
 		language: "pt",
 		autosaveMinutes: 5
 	},
+	purchaseQuantities: {},
+	loan: null,
 	ui: {
 		currentScreen: "menu",
 		previousScreen: "menu",
@@ -305,7 +341,13 @@ const eventCatalog = [
 	{ id: "marketplaceOutage", name: "Marketplace fora do ar", duration: 5 },
 	{ id: "taxes", name: "Governo cobrando impostos", duration: 0 },
 	{ id: "packingFailure", name: "Equipamentos de empacotamento quebraram", duration: 0 },
-	{ id: "campaignBoost", name: "Campanha", duration: 5 }
+	{ id: "campaignBoost", name: "Campanha geral", duration: () => randomInt(5, 20) }
+];
+
+const loanOptions = [
+	{ id: "loan-10k", amount: 10000 },
+	{ id: "loan-100k", amount: 100000 },
+	{ id: "loan-1m", amount: 1000000 }
 ];
 
 function ensureSaveDir() {
@@ -383,6 +425,23 @@ function loadSettings() {
 	}
 }
 
+function applySettings() {
+	const resolution = gameState.settings.resolution;
+	if (resolution) {
+		ipcRenderer.invoke("set-resolution", resolution);
+	}
+	const fullscreen = Boolean(gameState.settings.fullscreen);
+	ipcRenderer.invoke("set-fullscreen", { fullscreen });
+	if (!window?.require) {
+		if (fullscreen) {
+			document.documentElement.requestFullscreen?.();
+		} else {
+			document.exitFullscreen?.();
+		}
+	}
+	updateHeaderTexts();
+}
+
 function generateCompetitors() {
 	const names = ["Loja Leste", "Mega Centro", "Outlet Sul", "Ponto Norte"];
 	competitors = names.map((name, index) => ({
@@ -400,8 +459,56 @@ function t(key) {
 	return key.split(".").reduce((obj, part) => (obj && obj[part] !== undefined ? obj[part] : null), language) ?? key;
 }
 
+function updateHeaderTexts() {
+	const saveButton = document.getElementById("saveButton");
+	const menuButton = document.getElementById("menuButton");
+	const speedLabel = document.querySelector(".header-speed-label");
+	const pauseButton = document.getElementById("pauseButton");
+	const speedNormal = document.getElementById("speedNormal");
+	const speedFast = document.getElementById("speedFast");
+	if (saveButton) {
+		saveButton.textContent = t("saveGame");
+	}
+	if (menuButton) {
+		menuButton.textContent = t("mainMenuAction");
+	}
+	if (speedLabel) {
+		speedLabel.textContent = t("speedTitle");
+	}
+	if (pauseButton) {
+		pauseButton.textContent = t("speedPause");
+	}
+	if (speedNormal) {
+		speedNormal.textContent = t("speedNormal");
+	}
+	if (speedFast) {
+		speedFast.textContent = t("speedFast");
+	}
+}
+
+function setHeaderSpeedVisible(isVisible) {
+	const headerSpeed = document.getElementById("headerSpeed");
+	if (headerSpeed) {
+		headerSpeed.classList.toggle("is-hidden", !isVisible);
+	}
+}
+
+function setHeaderGameControlsEnabled(isEnabled) {
+	const saveButton = document.getElementById("saveButton");
+	const menuButton = document.getElementById("menuButton");
+	if (saveButton) {
+		saveButton.disabled = !isEnabled;
+	}
+	if (menuButton) {
+		menuButton.disabled = !isEnabled;
+	}
+}
+
 function renderMainMenu() {
 	gameState.ui.currentScreen = "menu";
+	updateHeaderTexts();
+	setHeaderSpeedVisible(false);
+	setHeaderGameControlsEnabled(false);
 	const mainScreen = document.getElementById("mainScreen");
 	mainScreen.innerHTML = `
 		<div id="mainMenu" class="card">
@@ -477,6 +584,42 @@ function openCompanyPrompt() {
 	});
 }
 
+function showMessageModal({ title, message, confirmLabel = "Ok", onConfirm = null }) {
+	const existingModal = document.getElementById("modalRoot");
+	if (existingModal) {
+		existingModal.remove();
+	}
+
+	const modalRoot = document.createElement("div");
+	modalRoot.id = "modalRoot";
+	modalRoot.innerHTML = `
+		<div class="modal-backdrop">
+			<div class="modal-card">
+				<h3>${title}</h3>
+				<p class="status-note">${message}</p>
+				<div class="modal-actions">
+					<button data-action="confirm">${confirmLabel}</button>
+				</div>
+			</div>
+		</div>
+	`;
+	document.body.appendChild(modalRoot);
+
+	const confirmButton = modalRoot.querySelector('[data-action="confirm"]');
+	const closeModal = () => {
+		modalRoot.remove();
+		if (onConfirm) {
+			onConfirm();
+		}
+	};
+	confirmButton.addEventListener("click", closeModal);
+	modalRoot.querySelector(".modal-backdrop").addEventListener("click", (event) => {
+		if (event.target === modalRoot.querySelector(".modal-backdrop")) {
+			closeModal();
+		}
+	});
+}
+
 async function newGame() {
 	const name = await openCompanyPrompt();
 	if (!name || !name.trim()) {
@@ -500,6 +643,8 @@ async function newGame() {
 	gameState.gameSpeed = 1;
 	gameState.paused = false;
 	gameState.xp = 0;
+	gameState.purchaseQuantities = {};
+	gameState.loan = null;
 	gameState.skills = {
 		autoRestock: false,
 		marketingSocial: false,
@@ -585,12 +730,19 @@ async function loadGame() {
 	if (!parsed.gameSpeed) {
 		gameState.gameSpeed = 1;
 	}
+	if (!parsed.purchaseQuantities) {
+		gameState.purchaseQuantities = {};
+	}
+	if (!parsed.loan) {
+		gameState.loan = null;
+	}
 	if (parsed.competitors) {
 		competitors = parsed.competitors;
 	} else {
 		generateCompetitors();
 	}
 	resetLoops();
+	applySettings();
 	renderGameScreen();
 	updateMarketShare();
 	startSimulationLoop();
@@ -598,7 +750,7 @@ async function loadGame() {
 	startAutosave();
 }
 
-function saveGame() {
+function saveGame({ auto = false } = {}) {
 	try {
 		if (!gameState.companyName) {
 			return;
@@ -624,7 +776,9 @@ function saveGame() {
 			skills: gameState.skills,
 			activeEvents: gameState.activeEvents,
 			customerCounts: gameState.customerCounts,
-			competitors
+			competitors,
+			purchaseQuantities: gameState.purchaseQuantities,
+			loan: gameState.loan
 		};
 		const savedAt = new Date().toISOString();
 		const payload = { ...snapshot, savedAt };
@@ -634,18 +788,30 @@ function saveGame() {
 			const savePath = path.join(SAVE_DIR, `${fileSafeName}.json`);
 			const saved = writeJsonFile(savePath, payload);
 			if (saved) {
-				showSaveNotice(`${t("saveSuccess")} (${fileSafeName}.json)`);
+				const message = auto ? t("saveAuto") : t("saveSuccess");
+				showSaveNotice(message, false, auto ? 10000 : 3000);
 			} else {
-				showSaveNotice(t("saveFail"), true);
+				showSaveNotice(t("saveFail"), true, 4000);
 			}
 			return;
 		}
 		localStorage.setItem(`marketplace-save-${gameState.companyName}`, JSON.stringify(payload));
 		updateSaveIndex(gameState.companyName, savedAt);
-		showSaveNotice(t("saveSuccess"));
+		showSaveNotice(auto ? t("saveAuto") : t("saveSuccess"), false, auto ? 10000 : 3000);
 	} catch (error) {
 		console.error(error);
 	}
+}
+
+function manualSave() {
+	saveGame({ auto: false });
+}
+
+function goToMainMenu() {
+	resetLoops();
+	gameState.paused = true;
+	gameState.ui.currentScreen = "menu";
+	renderMainMenu();
 }
 
 function updateSaveIndex(name, savedAt) {
@@ -660,22 +826,22 @@ function updateSaveIndex(name, savedAt) {
 	}
 }
 
-function showSaveNotice(message, isError = false) {
-	const toast = document.getElementById("saveToast");
-	if (!toast) {
+function showSaveNotice(message, isError = false, duration = 3000) {
+	const notice = document.getElementById("headerNotice");
+	if (!notice) {
 		return;
 	}
-	toast.textContent = message;
-	toast.classList.toggle("error", isError);
-	toast.classList.add("visible");
-	if (toast.dataset.timerId) {
-		clearTimeout(Number(toast.dataset.timerId));
+	notice.textContent = message;
+	notice.classList.toggle("error", isError);
+	notice.classList.add("visible");
+	if (notice.dataset.timerId) {
+		clearTimeout(Number(notice.dataset.timerId));
 	}
 	const timerId = setTimeout(() => {
-		toast.classList.remove("visible");
-		toast.classList.remove("error");
-	}, 2400);
-	toast.dataset.timerId = timerId;
+		notice.classList.remove("visible");
+		notice.classList.remove("error");
+	}, duration);
+	notice.dataset.timerId = timerId;
 }
 
 function resetLoops() {
@@ -719,13 +885,17 @@ function startAutosave() {
 	const minutes = Math.max(1, Number(gameState.settings.autosaveMinutes) || 5);
 	gameState.settings.autosaveMinutes = minutes;
 	gameState.intervals.autosave = setInterval(() => {
-		saveGame();
+		saveGame({ auto: true });
 	}, minutes * 60 * 1000);
 }
 
 function options() {
 	const mainScreen = document.getElementById("mainScreen");
 	gameState.ui.previousScreen = gameState.ui.currentScreen;
+	gameState.ui.currentScreen = "options";
+	updateHeaderTexts();
+	setHeaderSpeedVisible(false);
+	setHeaderGameControlsEnabled(gameState.ui.previousScreen === "game");
 	const optionsMarkup = resolutionOptions.map((option) => {
 		const selected = option.width === gameState.settings.resolution.width && option.height === gameState.settings.resolution.height;
 		return `<option value="${option.width}x${option.height}" ${selected ? "selected" : ""}>${option.label}</option>`;
@@ -795,7 +965,17 @@ function toggleFullscreen(value) {
 
 function updateLanguage(language) {
 	gameState.settings.language = language;
-	renderMainMenu();
+	if (gameState.ui.currentScreen === "game") {
+		renderGameScreen();
+	} else if (gameState.ui.currentScreen === "menu") {
+		renderMainMenu();
+	} else if (gameState.ui.currentScreen === "options") {
+		options();
+	} else if (gameState.ui.currentScreen === "credits") {
+		credits();
+	} else {
+		renderMainMenu();
+	}
 	saveSettings();
 }
 
@@ -812,6 +992,10 @@ function quit() {
 function credits() {
 	const mainScreen = document.getElementById("mainScreen");
 	gameState.ui.previousScreen = gameState.ui.currentScreen;
+	gameState.ui.currentScreen = "credits";
+	updateHeaderTexts();
+	setHeaderSpeedVisible(false);
+	setHeaderGameControlsEnabled(gameState.ui.previousScreen === "game");
 	mainScreen.innerHTML = `
 		<div class="card">
 			<div class="card-header">
@@ -842,14 +1026,14 @@ function renderGameScreen() {
 				<div class="inventory-actions">
 					<label>
 						${t("stockLabel")}
-						<input type="number" min="1" max="500" value="20" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseTotal('${product.id}')">
+						<input type="number" min="1" max="9999" value="${getPurchaseQuantity(product.id)}" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseQuantity('${product.id}', this.value)">
 					</label>
 					<div class="stepper">
 						${renderStepperButtons(`adjustPurchaseQty('${product.id}',`)}
 					</div>
 					<div class="purchase-total" data-product-total="${product.id}">
 						<span>${t("purchaseTotalLabel")}</span>
-						<strong>R$ ${Math.round(product.cost * 20)}</strong>
+						<strong>R$ ${Math.round(product.cost * getPurchaseQuantity(product.id))}</strong>
 					</div>
 					<button onclick="buyProduct('${product.id}', ${supplier.id})">${t("buyAction")}</button>
 				</div>
@@ -871,7 +1055,8 @@ function renderGameScreen() {
 		{ id: "suppliers", label: t("tabs.suppliers") },
 		{ id: "market", label: t("tabs.market") },
 		{ id: "skills", label: t("tabs.skills") },
-		{ id: "marketing", label: t("tabs.marketing") }
+		{ id: "marketing", label: t("tabs.marketing") },
+		{ id: "bank", label: t("tabs.bank") }
 	];
 	const tabsMarkup = tabs.map((tab) => `
 		<button class="tab-button ${gameState.ui.activeTab === tab.id ? "active" : ""}" data-tab="${tab.id}" onclick="setActiveTab('${tab.id}')">
@@ -893,13 +1078,6 @@ function renderGameScreen() {
 					<div class="stat"><span>${t("xpLabel")}</span><strong id="xpStat">0</strong></div>
 				</div>
 				<div class="section-divider"></div>
-				<h3 class="panel-title">${t("speedTitle")}</h3>
-				<div class="speed-controls">
-					<button class="secondary" id="pauseButton" onclick="togglePause()">${t("speedPause")}</button>
-					<button class="secondary" id="speedNormal" onclick="setGameSpeed(1)">${t("speedNormal")}</button>
-					<button class="secondary" id="speedFast" onclick="setGameSpeed(2)">${t("speedFast")}</button>
-				</div>
-				<div class="section-divider"></div>
 				<h3 class="panel-title">${t("packagingTitle")}</h3>
 				<div class="packaging-options">
 					${renderPackagingOption("simple")}
@@ -917,13 +1095,15 @@ function renderGameScreen() {
 				<div id="tabContent"></div>
 			</section>
 		</div>
-		<div id="saveToast" class="save-toast" aria-live="polite"></div>
 	`;
 
 	updateStats();
 	renderFeed();
 	renderTabContent({ supplierCards });
 	updateSpeedControls();
+	updateHeaderTexts();
+	setHeaderSpeedVisible(true);
+	setHeaderGameControlsEnabled(true);
 }
 
 function renderStepperButtons(callbackStart) {
@@ -954,14 +1134,14 @@ function renderTabContent(payload = {}) {
 				<div class="inventory-actions">
 					<label>
 						${t("stockLabel")}
-						<input type="number" min="1" max="500" value="20" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseTotal('${product.id}')">
+						<input type="number" min="1" max="9999" value="${getPurchaseQuantity(product.id)}" data-product="${product.id}" class="buy-qty" oninput="updatePurchaseQuantity('${product.id}', this.value)">
 					</label>
 					<div class="stepper">
 						${renderStepperButtons(`adjustPurchaseQty('${product.id}',`)}
 					</div>
 					<div class="purchase-total" data-product-total="${product.id}">
 						<span>${t("purchaseTotalLabel")}</span>
-						<strong>R$ ${Math.round(product.cost * 20)}</strong>
+						<strong>R$ ${Math.round(product.cost * getPurchaseQuantity(product.id))}</strong>
 					</div>
 					<button onclick="buyProduct('${product.id}', ${supplier.id})">${t("buyAction")}</button>
 				</div>
@@ -1012,6 +1192,14 @@ function renderTabContent(payload = {}) {
 			</div>
 		`;
 		break;
+	case "bank":
+		container.innerHTML = `
+			<h2 class="panel-title">${t("bankTitle")}</h2>
+			<p class="status-note">${t("bankHint")}</p>
+			<div id="bankContent"></div>
+		`;
+		renderBank();
+		break;
 	default:
 		container.innerHTML = `
 			<h2 class="panel-title">${t("inventoryTitle")}</h2>
@@ -1034,7 +1222,7 @@ function findProduct(productId) {
 
 function buyProduct(productId, supplierId) {
 	const qtyInput = document.querySelector(`input[data-product="${productId}"]`);
-	const quantity = Number(qtyInput?.value) || 0;
+	const quantity = clamp(Number(qtyInput?.value) || 0, 0, 9999);
 	if (quantity <= 0) {
 		return;
 	}
@@ -1045,7 +1233,11 @@ function buyProduct(productId, supplierId) {
 	const { product, supplier } = details;
 	const totalCost = product.cost * quantity;
 	if (gameState.cash < totalCost) {
-		alert("Saldo insuficiente.");
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: t("insufficientFundsMessage"),
+			confirmLabel: t("confirmAction")
+		});
 		return;
 	}
 	gameState.cash -= totalCost;
@@ -1097,7 +1289,11 @@ function runMarketing(action) {
 		return;
 	}
 	if (gameState.cash < selected.cost) {
-		alert("Saldo insuficiente para esta ação.");
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: t("insufficientFundsMessage"),
+			confirmLabel: t("confirmAction")
+		});
 		return;
 	}
 	gameState.cash -= selected.cost;
@@ -1118,6 +1314,7 @@ function simulateRound() {
 	updateSuppliers();
 	applyEvents();
 	handleAutoRestock();
+	handleLoanPayments();
 
 	gameState.inventory.forEach((item) => {
 		if (item.stock <= 0) {
@@ -1162,7 +1359,24 @@ function simulateRound() {
 	updateInventoryStats();
 	renderSuppliers();
 	renderSkills();
+	checkGameOver();
 	flushPendingNotices();
+}
+
+function checkGameOver() {
+	const totalStock = gameState.inventory.reduce((sum, item) => sum + item.stock, 0);
+	if (gameState.cash <= -500000 && totalStock === 0) {
+		resetLoops();
+		gameState.paused = true;
+		showMessageModal({
+			title: "Fim de jogo",
+			message: "Sua empresa acumulou dívidas demais e ficou sem estoque.",
+			confirmLabel: t("confirmAction"),
+			onConfirm: () => {
+				renderMainMenu();
+			}
+		});
+	}
 }
 
 function calculateDemand(item) {
@@ -1313,28 +1527,36 @@ function renderInventory() {
 			<strong>${item.name}</strong>
 			<small>${item.supplier}</small>
 			<small data-inventory-stats="${item.productId}">${t("qualityLabel")}: ${Math.round(item.quality)}/100 · ${t("costLabel")}: R$ ${item.cost.toFixed(0)}</small>
-			<div class="inventory-actions">
-				<span>${t("stockLabel")}: <strong data-inventory-stock="${item.productId}">${item.stock}</strong></span>
-				<label>
-					${t("sellPriceLabel")}
-					<input type="number" min="1" value="${item.sellPrice}" data-inventory="${item.productId}" data-field="sellPrice" oninput="updateSellPrice('${item.productId}', this.value)">
-				</label>
-				<div class="stepper">
-					${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'sellPrice',`)}
+			<div class="inventory-actions stacked">
+				<div class="inventory-field">
+					<span>${t("stockLabel")}: <strong data-inventory-stock="${item.productId}">${item.stock}</strong></span>
 				</div>
-				<label>
-					${t("restockThresholdLabel")}
-					<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" data-inventory="${item.productId}" data-field="threshold" oninput="updateAutoRestock('${item.productId}', 'threshold', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
-				</label>
-				<div class="stepper">
-					${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'threshold',`)}
+				<div class="inventory-field">
+					<label>
+						${t("sellPriceLabel")}
+						<input type="number" min="1" value="${item.sellPrice}" data-inventory="${item.productId}" data-field="sellPrice" oninput="updateSellPrice('${item.productId}', this.value)">
+					</label>
+					<div class="stepper">
+						${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'sellPrice',`)}
+					</div>
 				</div>
-				<label>
-					${t("restockQuantityLabel")}
-					<input type="number" min="0" value="${item.autoRestockQty ?? 0}" data-inventory="${item.productId}" data-field="quantity" oninput="updateAutoRestock('${item.productId}', 'quantity', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
-				</label>
-				<div class="stepper">
-					${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'quantity',`)}
+				<div class="inventory-field">
+					<label>
+						${t("restockThresholdLabel")}
+						<input type="number" min="0" value="${item.autoRestockThreshold ?? 0}" data-inventory="${item.productId}" data-field="threshold" oninput="updateAutoRestock('${item.productId}', 'threshold', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
+					</label>
+					<div class="stepper">
+						${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'threshold',`)}
+					</div>
+				</div>
+				<div class="inventory-field">
+					<label>
+						${t("restockQuantityLabel")}
+						<input type="number" min="0" value="${item.autoRestockQty ?? 0}" data-inventory="${item.productId}" data-field="quantity" oninput="updateAutoRestock('${item.productId}', 'quantity', this.value)" ${autoRestockUnlocked ? "" : "disabled"}>
+					</label>
+					<div class="stepper">
+						${renderStepperButtons(`adjustInventoryInput('${item.productId}', 'quantity',`)}
+					</div>
 				</div>
 				${autoRestockUnlocked ? "" : `<small class="status-note">${t("restockLocked")}</small>`}
 			</div>
@@ -1397,6 +1619,20 @@ function renderSuppliers() {
 	});
 }
 
+function getPurchaseQuantity(productId) {
+	const stored = gameState.purchaseQuantities?.[productId];
+	return stored !== undefined ? stored : 20;
+}
+
+function updatePurchaseQuantity(productId, value) {
+	const quantity = clamp(Number(value) || 1, 1, 9999);
+	gameState.purchaseQuantities = {
+		...gameState.purchaseQuantities,
+		[productId]: quantity
+	};
+	updatePurchaseTotal(productId);
+}
+
 function updatePurchaseTotal(productId) {
 	const qtyInput = document.querySelector(`input[data-product="${productId}"]`);
 	const totalSlot = document.querySelector(`[data-product-total="${productId}"] strong`);
@@ -1405,6 +1641,10 @@ function updatePurchaseTotal(productId) {
 		return;
 	}
 	const quantity = Math.max(0, Number(qtyInput.value) || 0);
+	gameState.purchaseQuantities = {
+		...gameState.purchaseQuantities,
+		[productId]: quantity
+	};
 	totalSlot.textContent = `R$ ${Math.round(details.product.cost * quantity)}`;
 }
 
@@ -1417,7 +1657,7 @@ function adjustPurchaseQty(productId, delta) {
 	const max = Number(input.max) || Infinity;
 	const next = clamp((Number(input.value) || 0) + delta, min, max);
 	input.value = next;
-	updatePurchaseTotal(productId);
+	updatePurchaseQuantity(productId, next);
 }
 
 function adjustInventoryInput(productId, field, delta) {
@@ -1490,6 +1730,104 @@ function handleAutoRestock() {
 		item.cost = details.product.cost;
 		item.quality = details.product.quality;
 	});
+}
+
+function formatCurrency(value) {
+	const rounded = Math.round(value);
+	return `R$ ${rounded.toLocaleString("pt-BR")}`;
+}
+
+function renderBank() {
+	const container = document.getElementById("bankContent");
+	if (!container) {
+		return;
+	}
+	const activeLoan = gameState.loan;
+	const activeLoanMarkup = activeLoan
+		? `
+			<div class="loan-active card">
+				<strong>${t("bankActiveLoan")}</strong>
+				<div class="loan-active-details">
+					<span>${t("bankLoanAmount")}: ${formatCurrency(activeLoan.amount)}</span>
+					<span>${t("bankLoanTotal")}: ${formatCurrency(activeLoan.total)}</span>
+					<span>${t("bankInstallmentsLeft")}: ${activeLoan.remainingInstallments}</span>
+					<span>${t("bankInstallmentValue")}: ${formatCurrency(activeLoan.installmentValue)}</span>
+					<span>${t("bankNextPayment")}: ${activeLoan.nextPaymentIn}</span>
+				</div>
+			</div>
+		`
+		: "";
+
+	const loanCards = loanOptions.map((loan) => {
+		const total = loan.amount * 1.05;
+		const installments = 100;
+		const installmentValue = total / installments;
+		const isActive = activeLoan?.id === loan.id;
+		return `
+			<div class="loan-card ${isActive ? "active" : ""}">
+				<strong>${formatCurrency(loan.amount)}</strong>
+				<small>${t("bankLoanInterest")}: 5%</small>
+				<small>${t("bankLoanTotal")}: ${formatCurrency(total)}</small>
+				<small>${t("bankLoanInstallments")}: ${installments}</small>
+				<small>${t("bankInstallmentValue")}: ${formatCurrency(installmentValue)}</small>
+				<button class="secondary" onclick="takeLoan('${loan.id}')" ${activeLoan ? "disabled" : ""}>
+					${t("bankTakeLoan")}
+				</button>
+			</div>
+		`;
+	}).join("");
+
+	container.innerHTML = `
+		${activeLoanMarkup}
+		<div class="loan-grid">
+			${loanCards}
+		</div>
+	`;
+}
+
+function takeLoan(loanId) {
+	if (gameState.loan) {
+		return;
+	}
+	const selected = loanOptions.find((loan) => loan.id === loanId);
+	if (!selected) {
+		return;
+	}
+	const total = selected.amount * 1.05;
+	const installments = 100;
+	const installmentValue = total / installments;
+	gameState.cash += selected.amount;
+	gameState.loan = {
+		id: selected.id,
+		amount: selected.amount,
+		total,
+		installmentValue,
+		remainingInstallments: installments,
+		nextPaymentIn: 30,
+		paymentInterval: 30
+	};
+	updateStats();
+	renderBank();
+}
+
+function handleLoanPayments() {
+	if (!gameState.loan) {
+		return;
+	}
+	gameState.loan.nextPaymentIn -= 1;
+	if (gameState.loan.nextPaymentIn > 0) {
+		return;
+	}
+	gameState.cash -= gameState.loan.installmentValue;
+	gameState.loan.remainingInstallments -= 1;
+	if (gameState.loan.remainingInstallments <= 0) {
+		gameState.loan = null;
+	} else {
+		gameState.loan.nextPaymentIn = gameState.loan.paymentInterval;
+	}
+	if (gameState.ui.activeTab === "bank") {
+		renderBank();
+	}
 }
 
 function applyRandomEvents() {
@@ -1622,6 +1960,10 @@ function generateComplaint(item) {
 
 function randomBetween(min, max) {
 	return Math.random() * (max - min) + min;
+}
+
+function randomInt(min, max) {
+	return Math.floor(randomBetween(min, max + 1));
 }
 
 function clamp(value, min, max) {
@@ -1823,22 +2165,40 @@ function triggerRandomEvent() {
 		return;
 	}
 	const roll = Math.random();
+	if (roll < 0.005) {
+		addEventEntry("packingFailure");
+		return;
+	}
+	if (roll < 0.015) {
+		addEventEntry("campaignBoost");
+		return;
+	}
 	if (roll > 0.2) {
 		return;
 	}
-	const event = eventCatalog[Math.floor(Math.random() * eventCatalog.length)];
-	const entry = { id: event.id, remaining: event.duration, processed: false };
+	const fallbackEvents = eventCatalog.filter((event) => event.id !== "packingFailure" && event.id !== "campaignBoost");
+	const event = fallbackEvents[Math.floor(Math.random() * fallbackEvents.length)];
+	addEventEntry(event.id);
+}
+
+function addEventEntry(eventId) {
+	const event = eventCatalog.find((entry) => entry.id === eventId);
+	if (!event) {
+		return;
+	}
+	const duration = typeof event.duration === "function" ? event.duration() : event.duration;
+	const entry = { id: event.id, remaining: duration, processed: false };
 	gameState.activeEvents.push(entry);
 	switch (event.id) {
 	case "marketplaceOutage":
-		queueNotice("🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por 5 atualizações.");
+		queueNotice("🚧 Marketplace fora do ar. Nenhuma venda ocorrerá por 5 dias.");
 		break;
 	case "taxes":
 		break;
 	case "packingFailure":
 		break;
 	case "campaignBoost":
-		queueNotice("📈 Campanha geral: vendas triplicadas por 5 atualizações.");
+		queueNotice(`📈 Campanha geral: vendas triplicadas por ${duration} dias.`);
 		break;
 	default:
 		break;
@@ -1963,4 +2323,5 @@ function getSaveIndex() {
 }
 
 loadSettings();
+applySettings();
 renderMainMenu();

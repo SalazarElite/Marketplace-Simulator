@@ -14,10 +14,23 @@
 			<h1>Marketplace Simulator</h1>
 			<p>Equilibre qualidade, preço e reputação para dominar o mercado.</p>
 		</div>
+		<div class="header-speed is-hidden" id="headerSpeed">
+			<span class="header-speed-label">Velocidade</span>
+			<div class="speed-controls">
+				<button class="secondary" id="pauseButton" onclick="togglePause()">PAUSE</button>
+				<button class="secondary" id="speedNormal" onclick="setGameSpeed(1)">1x</button>
+				<button class="secondary" id="speedFast" onclick="setGameSpeed(2)">2x</button>
+			</div>
+		</div>
 		<div class="header-actions">
-			<button class="secondary" onclick="options()">Opções</button>
-			<button class="secondary" onclick="credits()">Créditos</button>
-			<button class="secondary" onclick="quit()">Sair</button>
+			<div class="header-buttons">
+				<button class="secondary" id="saveButton" onclick="manualSave()">Salvar Jogo</button>
+				<button class="secondary" onclick="options()">Opções</button>
+				<button class="secondary" onclick="credits()">Créditos</button>
+				<button class="secondary" id="menuButton" onclick="goToMainMenu()">Menu Principal</button>
+				<button class="secondary" onclick="quit()">Sair</button>
+			</div>
+			<div id="headerNotice" class="header-notice" aria-live="polite"></div>
 		</div>
 	</header>
 	<div id="mainScreen">
