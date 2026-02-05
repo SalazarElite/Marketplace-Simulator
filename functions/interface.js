@@ -38,7 +38,63 @@ const translations = {
 			market: "Market share",
 			skills: "Habilidades",
 			marketing: "Marketing",
-			bank: "Banco"
+			bank: "Banco",
+			production: "Cadeia de produção"
+		},
+		productionTitle: "Cadeia de produção",
+		productionHint: "Gerencie equipes, lotes e maquinário para fabricar eletrônicos.",
+		productionSummaryTitle: "Resumo da produção",
+		productionPlantsLabel: "Plantas ativas",
+		productionSpeedLabel: "Velocidade atual",
+		productionDailyOutputLabel: "Produção diária",
+		productionTabs: {
+			employees: "Funcionários",
+			lots: "Lotes",
+			machinery: "Maquinário"
+		},
+		productionRoles: {
+			engineer: "Engenheiro",
+			programmer: "Programador",
+			operator: "Operador de Máquinas",
+			qa: "Controle de Qualidade"
+		},
+		productionRoleRequirement: "1 de cada para 1x",
+		productionHire: "Contratar",
+		productionFire: "Remover",
+		productionPlant: "Planta",
+		productionSelectProduct: "Produto",
+		productionCapacityLabel: "Capacidade",
+		productionEmployeesLabel: "Funcionários",
+		productionMachinesLabel: "Máquinas",
+		productionNoPlants: "Compre um lote para iniciar sua produção.",
+		productionLotsTitle: "Mapa de lotes",
+		productionLotsHint: "Áreas construídas são mais caras, mas já vêm prontas para operar.",
+		productionBuyLot: "Comprar lote",
+		productionOwnedLot: "Adquirido",
+		productionLotSize: "Tamanho",
+		productionLotStructure: "Estrutura",
+		productionLotCapacity: "Capacidade máxima",
+		productionMachineBuy: "Comprar máquina",
+		productionMachineOwned: "Máquinas atuais",
+		productionMachineryHint: "Cada máquina aumenta a capacidade de produção da planta.",
+		productionLotStructures: {
+			empty: "Terreno vazio",
+			house: "Casa simples",
+			smallBuilding: "Prédio pequeno",
+			largeBuilding: "Prédio grande"
+		},
+		productionLotSizes: {
+			small: "Pequeno",
+			medium: "Médio",
+			large: "Grande"
+		},
+		productionMapLegend: "Legenda do mapa",
+		productionMapLegendItems: {
+			empty: "Área em branco",
+			house: "Casa simples",
+			smallBuilding: "Prédio pequeno",
+			largeBuilding: "Prédio grande",
+			owned: "Lote adquirido"
 		},
 		bankTitle: "Banco",
 		bankHint: "Escolha um empréstimo para aumentar seu caixa agora e pagar ao longo dos dias.",
@@ -153,7 +209,63 @@ const translations = {
 			market: "Market share",
 			skills: "Skills",
 			marketing: "Marketing",
-			bank: "Bank"
+			bank: "Bank",
+			production: "Production chain"
+		},
+		productionTitle: "Production chain",
+		productionHint: "Manage teams, lots, and machinery to manufacture electronics.",
+		productionSummaryTitle: "Production summary",
+		productionPlantsLabel: "Active plants",
+		productionSpeedLabel: "Current speed",
+		productionDailyOutputLabel: "Daily output",
+		productionTabs: {
+			employees: "Staff",
+			lots: "Lots",
+			machinery: "Machinery"
+		},
+		productionRoles: {
+			engineer: "Engineer",
+			programmer: "Programmer",
+			operator: "Machine operator",
+			qa: "Quality control"
+		},
+		productionRoleRequirement: "1 of each for 1x",
+		productionHire: "Hire",
+		productionFire: "Remove",
+		productionPlant: "Plant",
+		productionSelectProduct: "Product",
+		productionCapacityLabel: "Capacity",
+		productionEmployeesLabel: "Employees",
+		productionMachinesLabel: "Machines",
+		productionNoPlants: "Purchase a lot to start production.",
+		productionLotsTitle: "Lot map",
+		productionLotsHint: "Built areas cost more, but are ready to operate.",
+		productionBuyLot: "Buy lot",
+		productionOwnedLot: "Owned",
+		productionLotSize: "Size",
+		productionLotStructure: "Structure",
+		productionLotCapacity: "Max capacity",
+		productionMachineBuy: "Buy machine",
+		productionMachineOwned: "Current machines",
+		productionMachineryHint: "Each machine increases the plant production capacity.",
+		productionLotStructures: {
+			empty: "Empty land",
+			house: "Simple house",
+			smallBuilding: "Small building",
+			largeBuilding: "Large building"
+		},
+		productionLotSizes: {
+			small: "Small",
+			medium: "Medium",
+			large: "Large"
+		},
+		productionMapLegend: "Map legend",
+		productionMapLegendItems: {
+			empty: "Blank area",
+			house: "Simple house",
+			smallBuilding: "Small building",
+			largeBuilding: "Large building",
+			owned: "Owned lot"
 		},
 		bankTitle: "Bank",
 		bankHint: "Choose a loan to boost your cash now and repay over days.",
@@ -366,10 +478,15 @@ const gameState = {
 	},
 	purchaseQuantities: {},
 	loan: null,
+	production: {
+		lotsOwned: [],
+		plants: []
+	},
 	ui: {
 		currentScreen: "menu",
 		previousScreen: "menu",
-		activeTab: "inventory"
+		activeTab: "inventory",
+		productionTab: "employees"
 	},
 	intervals: {
 		roundLoop: null,
@@ -397,6 +514,109 @@ const marketingActions = {
 	influencer: { cost: 900, boost: 12, skill: "marketingInfluencer" },
 	frete: { cost: 650, boost: 8, skill: "marketingFrete" }
 };
+
+const productionRoles = [
+	{ key: "engineer", salary: 750 },
+	{ key: "programmer", salary: 680 },
+	{ key: "operator", salary: 620 },
+	{ key: "qa", salary: 560 }
+];
+
+const productionCatalog = [
+	{ id: "smart-speaker", name: "Caixa inteligente Aurora", baseQuality: 86 },
+	{ id: "smartwatch", name: "Relógio Pulse X", baseQuality: 82 },
+	{ id: "drone", name: "Drone Skyline Mini", baseQuality: 88 },
+	{ id: "hub", name: "Central Domus IoT", baseQuality: 84 }
+];
+
+const productionLots = [
+	{
+		id: "lot-01",
+		name: "Quadra Central 12",
+		size: "small",
+		structure: "empty",
+		price: 3200,
+		maxEmployees: 6,
+		maxMachines: 4,
+		mapIndex: 1
+	},
+	{
+		id: "lot-02",
+		name: "Avenida Horizonte",
+		size: "medium",
+		structure: "house",
+		price: 6400,
+		maxEmployees: 10,
+		maxMachines: 7,
+		mapIndex: 2
+	},
+	{
+		id: "lot-03",
+		name: "Distrito Nova Luz",
+		size: "large",
+		structure: "smallBuilding",
+		price: 11800,
+		maxEmployees: 16,
+		maxMachines: 12,
+		mapIndex: 3
+	},
+	{
+		id: "lot-04",
+		name: "Zona Portuária",
+		size: "medium",
+		structure: "empty",
+		price: 5200,
+		maxEmployees: 9,
+		maxMachines: 7,
+		mapIndex: 5
+	},
+	{
+		id: "lot-05",
+		name: "Bairro Jardim Sul",
+		size: "small",
+		structure: "house",
+		price: 4800,
+		maxEmployees: 7,
+		maxMachines: 5,
+		mapIndex: 6
+	},
+	{
+		id: "lot-06",
+		name: "Setor Tecnológico",
+		size: "large",
+		structure: "largeBuilding",
+		price: 18800,
+		maxEmployees: 22,
+		maxMachines: 16,
+		mapIndex: 8
+	},
+	{
+		id: "lot-07",
+		name: "Praça do Lago",
+		size: "medium",
+		structure: "empty",
+		price: 5400,
+		maxEmployees: 10,
+		maxMachines: 8,
+		mapIndex: 10
+	},
+	{
+		id: "lot-08",
+		name: "Boulevard Norte",
+		size: "large",
+		structure: "smallBuilding",
+		price: 13200,
+		maxEmployees: 18,
+		maxMachines: 13,
+		mapIndex: 11
+	}
+];
+
+const machineryCatalog = [
+	{ id: "assembly", name: "Linha de montagem compacta", cost: 2100 },
+	{ id: "solder", name: "Robô de solda de precisão", cost: 2800 },
+	{ id: "tester", name: "Bancada de testes finais", cost: 1900 }
+];
 
 const eventCatalog = [
 	{ id: "marketplaceOutage", name: "Marketplace fora do ar", duration: () => randomInt(1, 7) },
@@ -720,6 +940,10 @@ async function newGame() {
 	gameState.xp = 0;
 	gameState.purchaseQuantities = {};
 	gameState.loan = null;
+	gameState.production = {
+		lotsOwned: [],
+		plants: []
+	};
 	gameState.skills = {
 		autoRestock: false,
 		marketingSocial: false,
@@ -730,6 +954,7 @@ async function newGame() {
 	gameState.activeEvents = [];
 	gameState.currentDate = new Date();
 	gameState.ui.activeTab = "inventory";
+	gameState.ui.productionTab = "employees";
 	generateCompetitors();
 	suppliers.forEach((supplier) => {
 		supplier.products.forEach((product) => {
@@ -772,6 +997,7 @@ async function loadGame() {
 		gameState.ui = { currentScreen: "menu", previousScreen: "menu", activeTab: "inventory" };
 	}
 	gameState.ui.activeTab = gameState.ui.activeTab || "inventory";
+	gameState.ui.productionTab = gameState.ui.productionTab || "employees";
 	gameState.settings = preservedSettings;
 	gameState.paused = false;
 	if (!parsed.settings) {
@@ -812,6 +1038,22 @@ async function loadGame() {
 	}
 	if (!parsed.loan) {
 		gameState.loan = null;
+	}
+	if (!parsed.production) {
+		gameState.production = {
+			lotsOwned: [],
+			plants: []
+		};
+	} else {
+		gameState.production.plants = (gameState.production.plants || []).map((plant) => ({
+			...plant,
+			machines: plant.machines ?? 0,
+			productId: plant.productId || productionCatalog[0].id,
+			employees: productionRoles.reduce((acc, role) => ({
+				...acc,
+				[role.key]: plant.employees?.[role.key] ?? 0
+			}), {})
+		}));
 	}
 	if (parsed.competitors) {
 		competitors = parsed.competitors;
@@ -856,7 +1098,9 @@ function saveGame({ auto = false } = {}) {
 			customerCounts: gameState.customerCounts,
 			competitors,
 			purchaseQuantities: gameState.purchaseQuantities,
-			loan: gameState.loan
+			loan: gameState.loan,
+			production: gameState.production,
+			ui: gameState.ui
 		};
 		const savedAt = new Date().toISOString();
 		const payload = { ...snapshot, savedAt };
@@ -1135,7 +1379,8 @@ function renderGameScreen() {
 		{ id: "market", label: t("tabs.market") },
 		{ id: "skills", label: t("tabs.skills") },
 		{ id: "marketing", label: t("tabs.marketing") },
-		{ id: "bank", label: t("tabs.bank") }
+		{ id: "bank", label: t("tabs.bank") },
+		{ id: "production", label: t("tabs.production") }
 	];
 	const tabsMarkup = tabs.map((tab) => `
 		<button class="tab-button ${gameState.ui.activeTab === tab.id ? "active" : ""}" data-tab="${tab.id}" onclick="setActiveTab('${tab.id}')">
@@ -1282,6 +1527,18 @@ function renderTabContent(payload = {}) {
 		`;
 		renderBank();
 		break;
+	case "production":
+		container.innerHTML = `
+			<h2 class="panel-title">${t("productionTitle")}</h2>
+			<p class="status-note">${t("productionHint")}</p>
+			<div class="production-summary" id="productionSummary"></div>
+			<div class="subtab-bar">
+				${renderProductionSubtabs()}
+			</div>
+			<div id="productionContent"></div>
+		`;
+		renderProductionTab();
+		break;
 	default:
 		container.innerHTML = `
 			<h2 class="panel-title">${t("inventoryTitle")}</h2>
@@ -1290,6 +1547,411 @@ function renderTabContent(payload = {}) {
 		renderInventory();
 		break;
 	}
+}
+
+function renderProductionSubtabs() {
+	const tabs = [
+		{ id: "employees", label: t("productionTabs.employees") },
+		{ id: "lots", label: t("productionTabs.lots") },
+		{ id: "machinery", label: t("productionTabs.machinery") }
+	];
+	return tabs.map((tab) => `
+		<button class="subtab-button ${gameState.ui.productionTab === tab.id ? "active" : ""}" onclick="setProductionTab('${tab.id}')">
+			${tab.label}
+		</button>
+	`).join("");
+}
+
+function setProductionTab(tabId) {
+	gameState.ui.productionTab = tabId;
+	renderTabContent();
+}
+
+function renderProductionTab() {
+	const summary = document.getElementById("productionSummary");
+	const container = document.getElementById("productionContent");
+	if (!summary || !container) {
+		return;
+	}
+	const plants = gameState.production.plants;
+	const totalOutput = plants.reduce((sum, plant) => sum + getPlantDailyOutput(plant), 0);
+	const topSpeed = plants.reduce((max, plant) => Math.max(max, getPlantProductionSpeed(plant)), 0);
+	summary.innerHTML = `
+		<div class="summary-card">
+			<strong>${t("productionSummaryTitle")}</strong>
+			<div class="summary-details">
+				<span>${t("productionPlantsLabel")}: <strong>${plants.length}</strong></span>
+				<span>${t("productionSpeedLabel")}: <strong>${topSpeed}x</strong></span>
+				<span>${t("productionDailyOutputLabel")}: <strong>${totalOutput}</strong></span>
+			</div>
+		</div>
+	`;
+
+	if (gameState.ui.productionTab === "lots") {
+		container.innerHTML = `
+			<h3 class="panel-title">${t("productionLotsTitle")}</h3>
+			<p class="status-note">${t("productionLotsHint")}</p>
+			<div class="city-map">
+				<div class="map-grid">
+					${renderLotMapTiles()}
+				</div>
+				<div class="map-legend">
+					<strong>${t("productionMapLegend")}</strong>
+					<ul>
+						<li><span class="legend-dot empty"></span>${t("productionMapLegendItems.empty")}</li>
+						<li><span class="legend-dot house"></span>${t("productionMapLegendItems.house")}</li>
+						<li><span class="legend-dot smallBuilding"></span>${t("productionMapLegendItems.smallBuilding")}</li>
+						<li><span class="legend-dot largeBuilding"></span>${t("productionMapLegendItems.largeBuilding")}</li>
+						<li><span class="legend-dot owned"></span>${t("productionMapLegendItems.owned")}</li>
+					</ul>
+				</div>
+			</div>
+			<div class="plant-grid">
+				${renderLotCards()}
+			</div>
+		`;
+		return;
+	}
+
+	if (gameState.ui.productionTab === "machinery") {
+		container.innerHTML = `
+			<h3 class="panel-title">${t("productionTabs.machinery")}</h3>
+			<p class="status-note">${t("productionMachineryHint")}</p>
+			${renderMachineryCards()}
+		`;
+		return;
+	}
+
+	container.innerHTML = `
+		<h3 class="panel-title">${t("productionTabs.employees")}</h3>
+		<p class="status-note">${t("productionRoleRequirement")}</p>
+		${renderPlantEmployeeCards()}
+	`;
+}
+
+function renderLotMapTiles() {
+	const totalTiles = 12;
+	const tiles = Array.from({ length: totalTiles }, (_, index) => {
+		const tileIndex = index + 1;
+		const lot = productionLots.find((entry) => entry.mapIndex === tileIndex);
+		if (!lot) {
+			return `<div class="map-tile park"><span>🌳</span><small>Parque</small></div>`;
+		}
+		const owned = gameState.production.lotsOwned.includes(lot.id);
+		const structureClass = owned ? "owned" : lot.structure;
+		const icon = getLotIcon(lot.structure);
+		return `
+			<div class="map-tile ${structureClass}">
+				<span>${icon}</span>
+				<small>${lot.name}</small>
+			</div>
+		`;
+	});
+	return tiles.join("");
+}
+
+function renderLotCards() {
+	return productionLots.map((lot) => {
+		const owned = gameState.production.lotsOwned.includes(lot.id);
+		const sizeLabel = t(`productionLotSizes.${lot.size}`);
+		const structureLabel = t(`productionLotStructures.${lot.structure}`);
+		return `
+			<div class="plant-card ${owned ? "owned" : ""}">
+				<div class="plant-header">
+					<div>
+						<strong>${lot.name}</strong>
+						<small>${sizeLabel} · ${structureLabel}</small>
+					</div>
+					<span class="plant-icon">${getLotIcon(lot.structure)}</span>
+				</div>
+				<div class="plant-meta">
+					<span>${t("productionLotCapacity")}: ${lot.maxEmployees} ${t("productionEmployeesLabel").toLowerCase()}, ${lot.maxMachines} ${t("productionMachinesLabel").toLowerCase()}</span>
+					<span>${t("costLabel")}: ${formatCurrency(lot.price)}</span>
+				</div>
+				<button class="secondary" onclick="buyLot('${lot.id}')" ${owned ? "disabled" : ""}>
+					${owned ? t("productionOwnedLot") : t("productionBuyLot")}
+				</button>
+			</div>
+		`;
+	}).join("");
+}
+
+function renderPlantEmployeeCards() {
+	if (gameState.production.plants.length === 0) {
+		return `<p class="status-note">${t("productionNoPlants")}</p>`;
+	}
+	return `
+		<div class="plant-grid">
+			${gameState.production.plants.map((plant) => {
+				const totalEmployees = getPlantEmployeeTotal(plant);
+				return `
+					<div class="plant-card">
+						<div class="plant-header">
+							<div>
+								<strong>${t("productionPlant")} ${plant.name}</strong>
+								<small>${t(`productionLotSizes.${plant.size}`)} · ${t(`productionLotStructures.${plant.structure}`)}</small>
+							</div>
+							<span class="plant-icon">🏭</span>
+						</div>
+						<div class="plant-meta">
+							<span>${t("productionCapacityLabel")}: ${totalEmployees}/${plant.maxEmployees} ${t("productionEmployeesLabel").toLowerCase()}</span>
+							<span>${t("productionMachineOwned")}: ${plant.machines}/${plant.maxMachines}</span>
+							<span>${t("productionSpeedLabel")}: ${getPlantProductionSpeed(plant)}x · ${t("productionDailyOutputLabel")}: ${getPlantDailyOutput(plant)}</span>
+						</div>
+						<div class="plant-field">
+							<label>
+								${t("productionSelectProduct")}
+								<select onchange="setPlantProduct('${plant.id}', this.value)">
+									${productionCatalog.map((product) => `
+										<option value="${product.id}" ${plant.productId === product.id ? "selected" : ""}>${product.name}</option>
+									`).join("")}
+								</select>
+							</label>
+						</div>
+						<div class="role-grid">
+							${productionRoles.map((role) => renderRoleRow(plant, role)).join("")}
+						</div>
+					</div>
+				`;
+			}).join("")}
+		</div>
+	`;
+}
+
+function renderRoleRow(plant, role) {
+	const count = plant.employees?.[role.key] ?? 0;
+	return `
+		<div class="role-row">
+			<div>
+				<strong>${t(`productionRoles.${role.key}`)}</strong>
+				<small>${t("costLabel")}: ${formatCurrency(role.salary)}</small>
+			</div>
+			<div class="role-actions">
+				<span>${count}</span>
+				<button class="secondary" onclick="adjustPlantStaff('${plant.id}', '${role.key}', -1)">-</button>
+				<button onclick="adjustPlantStaff('${plant.id}', '${role.key}', 1)">+</button>
+			</div>
+		</div>
+	`;
+}
+
+function renderMachineryCards() {
+	if (gameState.production.plants.length === 0) {
+		return `<p class="status-note">${t("productionNoPlants")}</p>`;
+	}
+	return `
+		<div class="plant-grid">
+			${gameState.production.plants.map((plant) => `
+				<div class="plant-card">
+					<div class="plant-header">
+						<div>
+							<strong>${t("productionPlant")} ${plant.name}</strong>
+							<small>${t(`productionLotSizes.${plant.size}`)} · ${t(`productionLotStructures.${plant.structure}`)}</small>
+						</div>
+						<span class="plant-icon">🛠️</span>
+					</div>
+					<div class="plant-meta">
+						<span>${t("productionMachineOwned")}: ${plant.machines}/${plant.maxMachines}</span>
+						<span>${t("productionSpeedLabel")}: ${getPlantProductionSpeed(plant)}x · ${t("productionDailyOutputLabel")}: ${getPlantDailyOutput(plant)}</span>
+					</div>
+					<div class="machinery-grid">
+						${machineryCatalog.map((machine) => `
+							<div class="machinery-card">
+								<strong>${machine.name}</strong>
+								<small>${t("costLabel")}: ${formatCurrency(machine.cost)}</small>
+								<button class="secondary" onclick="buyMachine('${plant.id}', '${machine.id}')">${t("productionMachineBuy")}</button>
+							</div>
+						`).join("")}
+					</div>
+				</div>
+			`).join("")}
+		</div>
+	`;
+}
+
+function getLotIcon(structure) {
+	switch (structure) {
+	case "house":
+		return "🏠";
+	case "smallBuilding":
+		return "🏢";
+	case "largeBuilding":
+		return "🏬";
+	default:
+		return "🟩";
+	}
+}
+
+function getPlantEmployeeTotal(plant) {
+	return Object.values(plant.employees || {}).reduce((sum, value) => sum + value, 0);
+}
+
+function getPlantProductionSpeed(plant) {
+	const roleCounts = productionRoles.map((role) => plant.employees?.[role.key] ?? 0);
+	const roleMin = Math.min(...roleCounts);
+	const machineCount = plant.machines || 0;
+	return Math.max(0, Math.min(roleMin, machineCount));
+}
+
+function getPlantDailyOutput(plant) {
+	return getPlantProductionSpeed(plant) * 100;
+}
+
+function setPlantProduct(plantId, productId) {
+	const plant = gameState.production.plants.find((entry) => entry.id === plantId);
+	if (!plant) {
+		return;
+	}
+	if (productionCatalog.some((product) => product.id === productId)) {
+		plant.productId = productId;
+	}
+}
+
+function adjustPlantStaff(plantId, roleKey, delta) {
+	const plant = gameState.production.plants.find((entry) => entry.id === plantId);
+	if (!plant) {
+		return;
+	}
+	const role = productionRoles.find((entry) => entry.key === roleKey);
+	if (!role) {
+		return;
+	}
+	const current = plant.employees?.[roleKey] ?? 0;
+	const next = current + delta;
+	if (next < 0) {
+		return;
+	}
+	const totalEmployees = getPlantEmployeeTotal(plant);
+	if (delta > 0 && totalEmployees + delta > plant.maxEmployees) {
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: "Limite de funcionários atingido.",
+			confirmLabel: t("confirmAction")
+		});
+		return;
+	}
+	if (delta > 0 && gameState.cash < role.salary) {
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: t("insufficientFundsMessage"),
+			confirmLabel: t("confirmAction")
+		});
+		return;
+	}
+	if (delta > 0) {
+		gameState.cash -= role.salary;
+	}
+	plant.employees = {
+		...plant.employees,
+		[roleKey]: next
+	};
+	updateStats();
+	if (gameState.ui.activeTab === "production") {
+		renderProductionTab();
+	}
+}
+
+function buyLot(lotId) {
+	const lot = productionLots.find((entry) => entry.id === lotId);
+	if (!lot || gameState.production.lotsOwned.includes(lotId)) {
+		return;
+	}
+	if (gameState.cash < lot.price) {
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: t("insufficientFundsMessage"),
+			confirmLabel: t("confirmAction")
+		});
+		return;
+	}
+	gameState.cash -= lot.price;
+	gameState.production.lotsOwned.push(lotId);
+	gameState.production.plants.push({
+		id: `plant-${lot.id}`,
+		lotId: lot.id,
+		name: lot.name,
+		size: lot.size,
+		structure: lot.structure,
+		maxEmployees: lot.maxEmployees,
+		maxMachines: lot.maxMachines,
+		machines: 0,
+		productId: productionCatalog[0].id,
+		employees: productionRoles.reduce((acc, role) => ({ ...acc, [role.key]: 0 }), {})
+	});
+	queueNotice(`🏗️ Lote adquirido: ${lot.name}.`);
+	updateStats();
+	renderProductionTab();
+}
+
+function buyMachine(plantId, machineId) {
+	const plant = gameState.production.plants.find((entry) => entry.id === plantId);
+	if (!plant) {
+		return;
+	}
+	const machine = machineryCatalog.find((entry) => entry.id === machineId);
+	if (!machine) {
+		return;
+	}
+	if (plant.machines + 1 > plant.maxMachines) {
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: "Limite de máquinas atingido para esta planta.",
+			confirmLabel: t("confirmAction")
+		});
+		return;
+	}
+	if (gameState.cash < machine.cost) {
+		showMessageModal({
+			title: t("insufficientFundsTitle"),
+			message: t("insufficientFundsMessage"),
+			confirmLabel: t("confirmAction")
+		});
+		return;
+	}
+	gameState.cash -= machine.cost;
+	plant.machines += 1;
+	queueNotice(`🛠️ ${machine.name} instalado em ${plant.name}.`);
+	updateStats();
+	renderProductionTab();
+}
+
+function handleProduction() {
+	if (!gameState.production?.plants?.length) {
+		return;
+	}
+	gameState.production.plants.forEach((plant) => {
+		const output = getPlantDailyOutput(plant);
+		if (output <= 0) {
+			return;
+		}
+		const product = productionCatalog.find((entry) => entry.id === plant.productId) || productionCatalog[0];
+		const cost = clamp(randomBetween(10, 25), 10, 25);
+		const quality = clamp(product.baseQuality + randomBetween(-4, 4), 70, 96);
+		addProducedStock(product, output, cost, quality);
+		queueNotice(`🏭 ${plant.name} produziu ${output} unidades de ${product.name}.`);
+	});
+}
+
+function addProducedStock(product, quantity, cost, quality) {
+	const productId = `prod-${product.id}`;
+	const existing = gameState.inventory.find((item) => item.productId === productId);
+	if (existing) {
+		existing.stock += quantity;
+		existing.cost = cost;
+		existing.quality = quality;
+		return;
+	}
+	gameState.inventory.push({
+		productId,
+		name: product.name,
+		supplier: "Produção interna",
+		stock: quantity,
+		sellPrice: Math.round(cost * 1.6),
+		quality,
+		cost,
+		autoRestockThreshold: 0,
+		autoRestockQty: 0
+	});
 }
 
 function findProduct(productId) {
@@ -1397,6 +2059,7 @@ function simulateRound() {
 	applyEvents();
 	handleAutoRestock();
 	handleLoanPayments();
+	handleProduction();
 
 	gameState.inventory.forEach((item) => {
 		if (item.stock <= 0) {
@@ -1440,7 +2103,11 @@ function simulateRound() {
 
 	updateMarketShare();
 	updateStats();
-	updateInventoryStats();
+	if (gameState.ui.activeTab === "inventory") {
+		renderInventory();
+	} else {
+		updateInventoryStats();
+	}
 	renderSuppliers();
 	renderSkills();
 	checkGameOver();
