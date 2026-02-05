@@ -549,6 +549,7 @@ input[type="number"] {
 	z-index: 2;
 }
 
+<<<<<<< codex/update-empty_lot-image-and-map-layout-glwl7l
 .map-lot:not(.map-lot--absolute) {
 	width: 76%;
 	height: 76%;
@@ -556,6 +557,8 @@ input[type="number"] {
 	align-self: center;
 }
 
+=======
+>>>>>>> main
 .map-lot--absolute {
 	position: absolute;
 }
