@@ -42,6 +42,7 @@ function loadMapLayout() {
 
 const mapLayout = loadMapLayout();
 const productionLots = mapLayout.lots || [];
+const mapGrid = mapLayout.grid || {};
 const lotPurchaseCost = Number(mapLayout.lotPurchaseCost) || 15000;
 const playerBuildingLevels = (mapLayout.playerBuildingLevels || []).slice().sort((a, b) => a.level - b.level);
 const maxBuildingLevel = playerBuildingLevels.length;
@@ -1594,7 +1595,9 @@ function renderProductionTab() {
 			<div class="city-map">
 				<div class="map-viewport map-viewport--image" style="background-image:url('${mapLayout.background}')">
 					${renderMapDecorations()}
-					${renderLotMapTiles()}
+					<div class="map-lot-grid" style="--map-grid-columns:${Math.max(1, Number(mapGrid.columns) || 4)}; --map-grid-rows:${Math.max(1, Number(mapGrid.rows) || 3)}; --map-grid-gap:${Math.max(4, Number(mapGrid.cellGap) || 12)}px;">
+						${renderLotMapTiles()}
+					</div>
 				</div>
 				<div class="map-legend">
 					<strong>${t("productionMapLegend")}</strong>
@@ -1641,8 +1644,12 @@ function renderLotMapTiles() {
 		const levelData = level > 0 ? getBuildingLevel(level) : null;
 		const lotImage = levelData?.image || lot.image;
 		const stateClass = owned ? "owned" : (canAfford ? "empty" : "locked");
+		const hasGridPlacement = Number(lot.row) > 0 && Number(lot.col) > 0;
+		const placementStyle = hasGridPlacement
+			? `grid-column:${Number(lot.col)} / span ${Math.max(1, Number(lot.colSpan) || 1)}; grid-row:${Number(lot.row)} / span ${Math.max(1, Number(lot.rowSpan) || 1)};`
+			: `left:${lot.x}%; top:${lot.y}%; width:${lot.width}%; height:${lot.height}%;`;
 		return `
-			<button class="map-lot ${stateClass} ${selected ? "selected" : ""}" type="button" data-lot-id="${lot.id}" onclick="selectLot('${lot.id}', event)" style="left:${lot.x}%; top:${lot.y}%; width:${lot.width}%; height:${lot.height}%;">
+			<button class="map-lot ${stateClass} ${selected ? "selected" : ""} ${hasGridPlacement ? "" : "map-lot--absolute"}" type="button" data-lot-id="${lot.id}" onclick="selectLot('${lot.id}', event)" style="${placementStyle}">
 				<img src="${lotImage}" alt="${lot.name}">
 				<span class="map-lot-label">${lot.name}</span>
 				${level > 0 ? `<small class="map-lot-level">${t("productionLotLevel")} ${level}</small>` : ""}
@@ -2410,16 +2417,20 @@ function getInventoryChartSnapshot(productId, fallbackStock) {
 function getInventoryChartMetrics(productId, fallbackStock) {
 	const history = gameState.productSalesHistory?.[productId] || [];
 	const snapshot = getInventoryChartSnapshot(productId, fallbackStock);
-	const values = history.flatMap((entry) => [entry.stock, entry.sold]);
-	values.push(snapshot.stock, snapshot.sold);
+	const recentHistory = [...history.slice(-5), snapshot].slice(-6);
+	const values = recentHistory.flatMap((entry) => [entry.stock, entry.sold]);
 	const minValue = Math.min(...values, 0);
 	const maxValue = Math.max(...values, 1);
+	const chartWidth = 102;
+	const chartHeight = 48;
 	const range = Math.max(1, maxValue - minValue);
-	const stockHeight = Math.round(clamp(((snapshot.stock - minValue) / range) * 100, 0, 100));
-	const soldHeight = Math.round(clamp(((snapshot.sold - minValue) / range) * 100, 0, 100));
+	const toY = (value) => (chartHeight - clamp(((value - minValue) / range) * chartHeight, 0, chartHeight)).toFixed(2);
+	const xStep = recentHistory.length > 1 ? chartWidth / (recentHistory.length - 1) : chartWidth;
+	const stockPath = recentHistory.map((entry, index) => `${(index * xStep).toFixed(2)},${toY(entry.stock)}`).join(" ");
+	const soldPath = recentHistory.map((entry, index) => `${(index * xStep).toFixed(2)},${toY(entry.sold)}`).join(" ");
 	return {
-		stockHeight,
-		soldHeight,
+		stockPath,
+		soldPath,
 		stockValue: snapshot.stock,
 		soldValue: snapshot.sold
 	};
@@ -2429,8 +2440,14 @@ function renderInventoryMiniChart(item) {
 	const metrics = getInventoryChartMetrics(item.productId, item.stock);
 	return `
 		<div class="inventory-mini-chart" data-inventory-chart="${item.productId}" aria-label="${t("inventoryMiniChartLabel")}" title="${t("stockLabel")}: ${metrics.stockValue} · ${t("lastSalesLabel")}: ${metrics.soldValue}">
-			<span class="mini-bar stock" style="height: ${metrics.stockHeight}%;"></span>
-			<span class="mini-bar sales" style="height: ${metrics.soldHeight}%;"></span>
+			<svg viewBox="0 0 102 48" preserveAspectRatio="none" aria-hidden="true">
+				<polyline class="mini-line stock" points="${metrics.stockPath}"></polyline>
+				<polyline class="mini-line sales" points="${metrics.soldPath}"></polyline>
+			</svg>
+			<div class="mini-chart-legend">
+				<span><i class="legend stock"></i>${t("stockLabel")}</span>
+				<span><i class="legend sales"></i>${t("lastSalesLabel")}</span>
+			</div>
 		</div>
 	`;
 }
@@ -2624,11 +2641,10 @@ function updateInventoryStats() {
 		const chart = document.querySelector(`[data-inventory-chart="${item.productId}"]`);
 		if (chart) {
 			const metrics = getInventoryChartMetrics(item.productId, item.stock);
-			const bars = chart.querySelectorAll(".mini-bar");
-			if (bars.length >= 2) {
-				bars[0].style.height = `${metrics.stockHeight}%`;
-				bars[1].style.height = `${metrics.soldHeight}%`;
-			}
+			const stockLine = chart.querySelector(".mini-line.stock");
+			const soldLine = chart.querySelector(".mini-line.sales");
+			if (stockLine) stockLine.setAttribute("points", metrics.stockPath);
+			if (soldLine) soldLine.setAttribute("points", metrics.soldPath);
 			chart.setAttribute("title", `${t("stockLabel")}: ${metrics.stockValue} · ${t("lastSalesLabel")}: ${metrics.soldValue}`);
 		}
 	});
